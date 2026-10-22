@@ -221,6 +221,7 @@
   "com_ui_approval_field_amount": "Amount",
   "com_ui_approval_field_due_date": "Due date",
   "com_ui_dont_approve": "Don't approve",
+  "com_ui_approve_and_send": "Approve and send",
   "com_ui_preview_truncated": "Preview truncated. Use the timeline tool card to inspect the full proposal.",
   "com_ui_approval_unavailable": "This action cannot be reviewed because its approval policy is incomplete.",
   "com_ui_decisions_selected": "{{0}} of {{1}} decisions selected",

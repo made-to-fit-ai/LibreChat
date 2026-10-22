@@ -65,6 +65,15 @@ export function friendlyToolTitle(name: string, info?: FriendlyToolInfo): string
   return title && title.length > 0 ? title : humaniseToolName(name);
 }
 
+/** Whether approving the call sends something out: a `send` word in the runtime name or title. */
+export function isSendTool(name: string, info?: FriendlyToolInfo): boolean {
+  const words = `${stripMCPSuffix(name)} ${info?.title ?? ''} ${info?.annotations?.title ?? ''}`;
+  return words
+    .toLowerCase()
+    .split(/[_\s]+/)
+    .includes('send');
+}
+
 /** Field name with underscores as spaces and a capital first letter. */
 export function humaniseFieldName(key: string): string {
   const spaced = key.replace(/[_\s]+/g, ' ').trim();

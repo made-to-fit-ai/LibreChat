@@ -9,6 +9,7 @@ import {
   humaniseToolName,
   indexFriendlyTools,
   isDraftProducingTool,
+  isSendTool,
   parseToolOutput,
   stripMCPSuffix,
 } from '../friendly';
@@ -40,6 +41,14 @@ describe('humaniser', () => {
     expect(friendlyToolTitle('email_send_client_email_mcp_workbench')).toBe(
       'Email send client email',
     );
+  });
+
+  test('detects sending tools from the runtime name or title', () => {
+    expect(isSendTool('email_send_client_email_mcp_workbench')).toBe(true);
+    expect(isSendTool('xero_post_mcp_workbench', { title: 'Send invoice', description: '' })).toBe(
+      true,
+    );
+    expect(isSendTool('drafts_create_draft_email_mcp_sender')).toBe(false);
   });
 
   test('humanises field names', () => {

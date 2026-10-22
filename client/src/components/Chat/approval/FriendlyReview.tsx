@@ -25,6 +25,16 @@ const FIELD_LABELS: Record<DraftPreviewKey, TranslationKeys> = {
   due_date: 'com_ui_approval_field_due_date',
 };
 
+/** The values a reviewer checks first. */
+const EMPHASISED = new Set<DraftPreviewKey>(['title', 'subject', 'amount']);
+
+/** Labels sit a step below values: smaller, and `secondary-alt` rather than `secondary`,
+ *  which on the dark theme is nearly as bright as the values themselves. */
+const LABEL = 'text-text-secondary-alt text-xs';
+
+/** One label column width for every list on the card, baseline-aligned with its value. */
+const GRID = 'grid grid-cols-[6.5rem_minmax(0,1fr)] items-baseline gap-x-4 gap-y-2';
+
 /**
  * The review card body for non-technical reviewers: what the action is in plain
  * words, what will be sent, and the remaining inputs as a labelled list. The
@@ -76,31 +86,30 @@ export default function FriendlyReview({
   const missingDraft = args?.draft_id != null && draft == null;
 
   return (
-    <div className="mb-3 space-y-3">
-      <div>
+    <div className="space-y-4">
+      <div className="space-y-1">
         <h3
           id={`approval-${request.tool_call_id}`}
-          className="text-text-primary text-base font-semibold [overflow-wrap:anywhere]"
+          className="text-text-primary text-base leading-6 font-semibold [overflow-wrap:anywhere]"
         >
           {heading}
           {title}
         </h3>
-        {summary && <p className="text-text-secondary mt-0.5 text-sm">{summary}</p>}
+        {summary && <p className="text-text-secondary text-sm">{summary}</p>}
       </div>
 
       {draft != null && draft.fields.length > 0 && (
-        <div className="border-border-light bg-surface-primary rounded-lg border p-3">
-          <p className="text-text-secondary mb-2 text-xs font-medium tracking-wide uppercase">
-            {localize('com_ui_approval_what_will_be_sent')}
-          </p>
-          <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1.5 text-sm">
+        <div className="border-border-light bg-surface-primary space-y-3 rounded-lg border px-4 py-3">
+          <p className={LABEL}>{localize('com_ui_approval_what_will_be_sent')}</p>
+          <dl className={GRID}>
             {draft.fields.map(({ key, value }) => (
               <div key={key} className="contents">
-                <dt className="text-text-secondary">{localize(FIELD_LABELS[key])}</dt>
+                <dt className={LABEL}>{localize(FIELD_LABELS[key])}</dt>
                 <dd
                   className={cn(
-                    'text-text-primary [overflow-wrap:anywhere]',
-                    (key === 'title' || key === 'subject') && 'font-medium',
+                    'text-text-primary text-sm [overflow-wrap:anywhere]',
+                    EMPHASISED.has(key) && 'font-semibold',
+                    key === 'amount' && 'tabular-nums',
                   )}
                 >
                   {value}
@@ -112,61 +121,54 @@ export default function FriendlyReview({
       )}
 
       {missingDraft && (
-        <p className="text-text-secondary text-sm">
+        <p className="text-text-secondary px-4 text-sm">
           {localize('com_ui_approval_draft_not_found', { 0: String(args?.draft_id) })}
         </p>
       )}
 
       {rows.length > 0 && (
-        <dl className="space-y-1.5 text-sm">
-          {rows.map((row) =>
-            isLongValue(row) ? (
-              <div key={row.key}>
-                <dt className="text-text-secondary">{row.label}</dt>
-                <dd className="text-text-primary mt-0.5 [overflow-wrap:anywhere] whitespace-pre-wrap">
-                  {row.value}
-                </dd>
-              </div>
-            ) : (
-              <div key={row.key} className="flex flex-wrap gap-x-3">
-                <dt className="text-text-secondary">{row.label}</dt>
-                <dd
-                  className={cn(
-                    'text-text-primary [overflow-wrap:anywhere]',
-                    row.kind === 'code' && 'font-mono text-xs leading-5',
-                    row.kind === 'empty' && 'text-text-secondary italic',
-                  )}
-                >
-                  {row.value}
-                </dd>
-              </div>
-            ),
-          )}
+        <dl className={cn(GRID, 'px-4')}>
+          {rows.map((row) => (
+            <div key={row.key} className="contents">
+              <dt className={LABEL}>{row.label}</dt>
+              <dd
+                className={cn(
+                  'text-text-primary text-sm [overflow-wrap:anywhere]',
+                  isLongValue(row) && 'whitespace-pre-wrap',
+                  row.kind === 'code' && 'font-mono text-xs',
+                  row.kind === 'empty' && 'text-text-secondary-alt italic',
+                )}
+              >
+                {row.value}
+              </dd>
+            </div>
+          ))}
         </dl>
       )}
 
-      <p className="text-text-secondary flex items-center gap-1.5 text-sm">
-        <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
-        {reason?.trim() || localize('com_ui_approval_nothing_sent')}
-      </p>
-
-      <div>
-        <button
-          type="button"
-          className="text-text-secondary hover:text-text-primary inline-flex items-center gap-1 text-xs"
-          aria-expanded={detailsOpen}
-          onClick={() => setDetailsOpen((open) => !open)}
-        >
-          {detailsOpen ? (
-            <ChevronDown className="size-3.5" aria-hidden="true" />
-          ) : (
-            <ChevronRight className="size-3.5" aria-hidden="true" />
-          )}
-          {localize('com_ui_details')}
-        </button>
+      <div className="space-y-2 px-4">
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <p className="text-text-secondary flex items-center gap-1.5 text-xs">
+            <ShieldCheck className="size-4 shrink-0" aria-hidden="true" />
+            {reason?.trim() || localize('com_ui_approval_nothing_sent')}
+          </p>
+          <button
+            type="button"
+            className="text-text-secondary-alt hover:text-text-primary inline-flex items-center gap-1 text-xs"
+            aria-expanded={detailsOpen}
+            onClick={() => setDetailsOpen((open) => !open)}
+          >
+            {detailsOpen ? (
+              <ChevronDown className="size-3.5" aria-hidden="true" />
+            ) : (
+              <ChevronRight className="size-3.5" aria-hidden="true" />
+            )}
+            {localize('com_ui_details')}
+          </button>
+        </div>
         {detailsOpen && (
-          <div className="mt-1.5 space-y-1.5">
-            <p className="text-text-secondary text-xs">
+          <div className="space-y-1.5">
+            <p className="text-text-secondary-alt text-xs">
               {localize('com_ui_approval_technical_name')}:{' '}
               <span className="font-mono">{request.name}</span>
             </p>
