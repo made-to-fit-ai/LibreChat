@@ -9,7 +9,8 @@ export const getDocumentTitleRevision = (): number => documentTitleRevision;
 export const hasRealTitle = (title?: string | null): title is string =>
   title != null && title !== '' && title !== 'New Chat';
 
-const getAppTitle = (): string => {
+/** The deployment's APP_TITLE (stored at startup), else LibreChat. */
+export const getAppTitle = (): string => {
   try {
     return localStorage.getItem(LocalStorageKeys.APP_TITLE) || DEFAULT_APP_TITLE;
   } catch {
