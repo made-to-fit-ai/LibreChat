@@ -64,7 +64,14 @@ export default function FriendlyReview({
 
   const { draft, rows, raw } = useMemo(() => {
     const args = parseArguments(request.arguments);
-    const messages = queryClient.getQueryData<TMessage[]>([QueryKeys.messages, conversationId]);
+    /** The draft may have been filed earlier in this same run, while the conversation was
+     *  still keyed `new` or the response was streaming, so look across every cached list. */
+    const current =
+      queryClient.getQueryData<TMessage[]>([QueryKeys.messages, conversationId]) ?? [];
+    const others = queryClient
+      .getQueriesData<TMessage[]>({ queryKey: [QueryKeys.messages] })
+      .flatMap(([, data]) => (Array.isArray(data) ? data : []));
+    const messages = [...others, ...current];
     const draft = args?.draft_id != null ? findDraftPreview(messages, args.draft_id) : undefined;
     const labels = {
       yes: localize('com_ui_yes'),
