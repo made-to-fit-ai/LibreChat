@@ -50,6 +50,7 @@ jest.mock('~/hooks/MCP', () => {
     useAppBridge: jest.fn(),
     useMCPAppFrame: jest.requireActual('~/hooks/MCP/useMCPAppFrame').useMCPAppFrame,
     useMCPServerNames: () => mcpServerNames,
+    useMCPServerTitles: () => new Map(),
   };
 });
 

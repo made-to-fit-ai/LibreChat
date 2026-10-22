@@ -54,6 +54,16 @@ describe('getToolDisplayLabel', () => {
     expect(getToolDisplayLabel('search_code_mcp_github', identityLocalize)).toBe('github');
   });
 
+  it('prefers the configured server title for an MCP tool', () => {
+    const titles = new Map([['github', 'GitHub']]);
+    expect(getToolDisplayLabel('search_code_mcp_github', identityLocalize, [], titles)).toBe(
+      'GitHub',
+    );
+    expect(getToolDisplayLabel('search_code_mcp_gitlab', identityLocalize, [], titles)).toBe(
+      'gitlab',
+    );
+  });
+
   it('returns the friendly translation key for a known native tool', () => {
     /** The identity-localize stub returns the translation key itself,
      *  which is what the real `useLocalize` would resolve at render time. */

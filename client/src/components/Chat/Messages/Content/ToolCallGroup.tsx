@@ -28,11 +28,11 @@ import {
   useFailedRevealTrigger,
 } from './reveal';
 import { useLocalize, useExpandCollapse, scheduleMessageContentLayoutReconcile } from '~/hooks';
+import { useMCPIconMap, useMCPServerNames, useMCPServerTitles } from '~/hooks/MCP';
 import { ASK_USER_QUESTION, getSubmittedAskAnswer } from '~/utils/approval';
 import { useMessagePartsHost } from '~/Providers/MessagePartsHostContext';
 import { ToolAuthWarning, ToolAuthWarningContext } from './auth';
 import { LoneGroupContext, SoleToolContext } from './disclosure';
-import { useMCPIconMap, useMCPServerNames } from '~/hooks/MCP';
 import { AttachmentGroup, ReasoningCompact } from './Parts';
 import { getOutcomeStatus, summarizeSpan } from './outcome';
 import { FOLD_RAIL_CLASSES, ROW_GLYPH_SLOT } from './rows';
@@ -99,6 +99,7 @@ export default function ToolCallGroup({
   const localize = useLocalize();
   const mcpIconMap = useMCPIconMap();
   const mcpServerNames = useMCPServerNames();
+  const mcpServerTitles = useMCPServerTitles();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const railHover = useRailHover();
@@ -212,7 +213,7 @@ export default function ToolCallGroup({
       if (!tool.name) {
         continue;
       }
-      const label = getToolDisplayLabel(tool.name, localize, mcpServerNames);
+      const label = getToolDisplayLabel(tool.name, localize, mcpServerNames, mcpServerTitles);
       labelCounts.set(label, (labelCounts.get(label) ?? 0) + 1);
     }
 
@@ -236,7 +237,7 @@ export default function ToolCallGroup({
       executingCount,
       toolNameSummary,
     };
-  }, [toolMetadata, localize, mcpServerNames]);
+  }, [toolMetadata, localize, mcpServerNames, mcpServerTitles]);
 
   /** Reasoning interleaved with the tool calls renders inside the body but is
    *  hidden while collapsed. Note it in the header's accessible label so screen
@@ -315,9 +316,14 @@ export default function ToolCallGroup({
     toolMetadata[0]?.name != null &&
     parseToolName(toolMetadata[0].name, mcpServerNames).friendlyKey === 'com_ui_tool_name_code';
   const singleToolLabel = useMemo(() => {
-    const raw = getToolDisplayLabel(toolMetadata[0]?.name ?? '', localize, mcpServerNames);
+    const raw = getToolDisplayLabel(
+      toolMetadata[0]?.name ?? '',
+      localize,
+      mcpServerNames,
+      mcpServerTitles,
+    );
     return raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : '';
-  }, [toolMetadata, localize, mcpServerNames]);
+  }, [toolMetadata, localize, mcpServerNames, mcpServerTitles]);
 
   const autoExpand = useMessagePartsHost().useAutoExpandTools();
   /** A labeled activity block is summarized by its header, so it collapses

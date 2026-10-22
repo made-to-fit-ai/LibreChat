@@ -1,7 +1,7 @@
 import { act } from '@testing-library/react';
 import { renderHook } from '@testing-library/react';
+import { useMCPIconMap, useMCPServerNames, useMCPServerTitles } from '../useMCPIconMap';
 import { activateCatalog, resetCatalogWarmup } from '../../useCatalogWarmup';
-import { useMCPIconMap, useMCPServerNames } from '../useMCPIconMap';
 
 const mockUseMCPServersQuery = jest.fn();
 jest.mock('~/data-provider', () => ({
@@ -36,5 +36,17 @@ describe('useMCPIconMap', () => {
     });
 
     expect(mockUseMCPServersQuery).toHaveBeenLastCalledWith({ enabled: true });
+  });
+
+  it('maps configured server titles by server name, skipping servers without one', () => {
+    mockUseMCPServersQuery.mockReturnValue({
+      data: {
+        accounting_insights: { title: 'Practice insights' },
+        drafts: { title: '  ' },
+        xero: {},
+      },
+    });
+    const { result } = renderHook(() => useMCPServerTitles());
+    expect([...result.current]).toEqual([['accounting_insights', 'Practice insights']]);
   });
 });
