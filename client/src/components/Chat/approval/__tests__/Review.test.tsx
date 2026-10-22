@@ -28,6 +28,7 @@ jest.mock('@librechat/client', () => ({
 }));
 
 jest.mock('~/hooks', () => ({
+  useGetAgentsConfig: () => ({ agentsConfig: undefined }),
   useLocalize: () => (key: string, values?: Record<string | number, string | number>) => {
     const labels: Record<string, string> = {
       com_ui_review_action: 'Review 1 action',
@@ -54,6 +55,7 @@ jest.mock('~/hooks', () => ({
 jest.mock('~/data-provider', () => ({
   useSubmitToolApprovalMutation: () => ({ mutate: jest.fn() }),
   useSubmitAskAnswerMutation: () => ({ mutate: jest.fn() }),
+  useMCPToolsQuery: () => ({ data: undefined }),
 }));
 
 jest.mock('~/store/agents', () => ({

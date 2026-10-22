@@ -71,7 +71,7 @@ export function createMCPStructuredTool(
 
 /** `_meta` carries the MCP Apps `ui.visibility` used to hide app-only tools from the model. */
 export type MCPToolInput = Pick<Tool, 'name' | 'description'> &
-  Partial<Pick<Tool, 'inputSchema' | '_meta'>>;
+  Partial<Pick<Tool, 'inputSchema' | '_meta' | 'title' | 'annotations'>>;
 
 export interface MCPToolCacheDeps {
   getCachedTools: (options?: {
@@ -172,6 +172,12 @@ export function formatMCPServerTools(serverName: string, tools: MCPToolInput[]):
     };
     if (keyToolName !== tool.name) {
       entry.serverToolName = tool.name;
+    }
+    if (typeof tool.title === 'string' && tool.title.length > 0) {
+      entry.title = tool.title;
+    }
+    if (tool.annotations != null) {
+      entry.annotations = tool.annotations;
     }
     serverTools[name] = entry;
   }

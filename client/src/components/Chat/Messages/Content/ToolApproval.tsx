@@ -99,12 +99,15 @@ export default function ToolApproval({
   toolCallId,
   args,
   surface = 'thread',
+  friendly = false,
 }: {
   approval: NonNullable<Agents.ToolCall['approval']>;
   toolCallId: string;
   args: string | Record<string, unknown> | undefined;
   /** The composer panel owns one batch submit; thread cards keep the lead button. */
   surface?: 'thread' | 'composer';
+  /** Plain-language labels for non-technical reviewers; edit and respond are demoted. */
+  friendly?: boolean;
 }) {
   const localize = useLocalize();
   const invalidJsonId = useId();
@@ -383,11 +386,18 @@ export default function ToolApproval({
         {allowedDecisions.map((decision) => {
           const Icon = DECISION_ICON[decision];
           const pressed = active === decision && (decision !== 'approve' || !allowAlways);
+          const demoted = friendly && (decision === 'edit' || decision === 'respond');
+          const label =
+            friendly && decision === 'reject' ? 'com_ui_dont_approve' : DECISION_LABEL[decision];
+          let variant: 'default' | 'outline' | 'quiet' = demoted ? 'quiet' : 'outline';
+          if (pressed) {
+            variant = 'default';
+          }
           return (
             <Button
               key={decision}
               size="sm"
-              variant={pressed ? 'default' : 'outline'}
+              variant={variant}
               disabled={locked}
               aria-pressed={pressed}
               onClick={() =>
@@ -396,7 +406,7 @@ export default function ToolApproval({
               className="inline-flex items-center gap-1.5"
             >
               <Icon className="h-4 w-4" aria-hidden="true" />
-              {localize(DECISION_LABEL[decision])}
+              {localize(label)}
             </Button>
           );
         })}

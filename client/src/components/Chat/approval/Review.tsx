@@ -15,9 +15,12 @@ import {
 } from '~/components/Chat/approval/state';
 import { buildApprovalPreview, buildApprovalPreviews } from '~/components/Chat/approval/preview';
 import ToolApproval from '~/components/Chat/Messages/Content/ToolApproval';
+import { indexFriendlyTools } from '~/components/Chat/approval/friendly';
+import FriendlyReview from '~/components/Chat/approval/FriendlyReview';
 import { useComposerOverlay } from '~/components/Chat/Input/overlay';
+import { useGetAgentsConfig, useLocalize } from '~/hooks';
+import { useMCPToolsQuery } from '~/data-provider';
 import { isCancelKey } from '~/utils/shortcuts';
-import { useLocalize } from '~/hooks';
 
 function usePendingToolApproval(conversationId: string) {
   const pendingAction = useAtomValue(pendingApprovalActionFamily(conversationId));
@@ -67,6 +70,14 @@ export const PendingToolApprovalPanel = memo(function PendingToolApprovalPanel({
   const { getDecisions, getStatus, isReady } = useApprovalContext();
   const { submitToolApproval } = useResumeSubmit();
   const actionId = pendingAction?.actionId;
+  const { agentsConfig } = useGetAgentsConfig();
+  const friendly = agentsConfig?.toolApproval?.friendly === true;
+  /** The catalog carries each MCP tool's title, description and input schema. */
+  const { data: mcpServers } = useMCPToolsQuery({ enabled: friendly });
+  const toolInfo = useMemo(
+    () => (friendly ? indexFriendlyTools(mcpServers?.servers) : new Map()),
+    [friendly, mcpServers],
+  );
 
   useEffect(() => {
     if (actionId != null) {
@@ -155,24 +166,38 @@ export const PendingToolApprovalPanel = memo(function PendingToolApprovalPanel({
               key={request.tool_call_id}
               aria-labelledby={`approval-${request.tool_call_id}`}
             >
-              <div className="mb-2">
-                <h3
-                  id={`approval-${request.tool_call_id}`}
-                  className="text-text-primary text-sm font-medium [overflow-wrap:anywhere]"
-                >
-                  {reviews.length > 1
-                    ? `${index + 1}. ${previewTitle(preview, localize)}`
-                    : previewTitle(preview, localize)}
-                </h3>
-                <p className="text-text-secondary text-xs">{localize(KIND_LABELS[preview.kind])}</p>
-              </div>
-              <pre className="border-border-light bg-surface-tertiary text-text-primary max-h-52 overflow-auto rounded-lg border p-3 font-mono text-xs break-words whitespace-pre-wrap">
-                {preview.body || localize('com_ui_no_arguments')}
-              </pre>
-              {preview.truncated && (
-                <p className="text-text-secondary mt-1 text-xs">
-                  {localize('com_ui_preview_truncated')}
-                </p>
+              {friendly ? (
+                <FriendlyReview
+                  conversationId={conversationId}
+                  request={request}
+                  info={toolInfo.get(request.name)}
+                  heading={reviews.length > 1 ? `${index + 1}. ` : undefined}
+                  reason={preview.description}
+                />
+              ) : (
+                <>
+                  <div className="mb-2">
+                    <h3
+                      id={`approval-${request.tool_call_id}`}
+                      className="text-text-primary text-sm font-medium [overflow-wrap:anywhere]"
+                    >
+                      {reviews.length > 1
+                        ? `${index + 1}. ${previewTitle(preview, localize)}`
+                        : previewTitle(preview, localize)}
+                    </h3>
+                    <p className="text-text-secondary text-xs">
+                      {localize(KIND_LABELS[preview.kind])}
+                    </p>
+                  </div>
+                  <pre className="border-border-light bg-surface-tertiary text-text-primary max-h-52 overflow-auto rounded-lg border p-3 font-mono text-xs break-words whitespace-pre-wrap">
+                    {preview.body || localize('com_ui_no_arguments')}
+                  </pre>
+                  {preview.truncated && (
+                    <p className="text-text-secondary mt-1 text-xs">
+                      {localize('com_ui_preview_truncated')}
+                    </p>
+                  )}
+                </>
               )}
               {config != null ? (
                 <ToolApproval
@@ -181,12 +206,14 @@ export const PendingToolApprovalPanel = memo(function PendingToolApprovalPanel({
                     allowed_decisions: config.allowed_decisions,
                     remember_scope: config.remember_scope,
                     remember_unavailable: config.remember_unavailable,
-                    description: preview.description,
+                    /* The friendly card prints the reason itself, beside its shield. */
+                    description: friendly ? undefined : preview.description,
                     allow_always: config.allow_always === true,
                   }}
                   toolCallId={request.tool_call_id}
                   args={request.arguments}
                   surface="composer"
+                  friendly={friendly}
                 />
               ) : (
                 <p className="text-text-warning mt-2 flex items-center text-xs" role="alert">
