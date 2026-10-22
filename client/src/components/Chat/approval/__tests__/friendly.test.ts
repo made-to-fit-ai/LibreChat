@@ -149,6 +149,9 @@ describe('draft preview', () => {
     expect(isDraftProducingTool('email_draft_client_email_mcp_workbench')).toBe(true);
     expect(isDraftProducingTool('drafts_get_draft_mcp_workbench')).toBe(true);
     expect(isDraftProducingTool('email_send_client_email_mcp_workbench')).toBe(false);
+    expect(isDraftProducingTool('draft_client_email_mcp_email')).toBe(true);
+    expect(isDraftProducingTool('get_draft_mcp_drafts')).toBe(true);
+    expect(isDraftProducingTool('send_client_email_mcp_email')).toBe(false);
   });
 
   test('parses plain and wrapped JSON output', () => {
@@ -181,6 +184,22 @@ describe('draft preview', () => {
     expect(findDraftPreview(messages, 'd_missing')).toBeUndefined();
     expect(findDraftPreview(messages, undefined)).toBeUndefined();
     expect(findDraftPreview(undefined, 'd_8f3a2c')).toBeUndefined();
+  });
+
+  test('finds a draft listed in a batch result', () => {
+    const batch = JSON.stringify({
+      data: {
+        rows: [
+          { draft_id: 'd_1', to_name: 'Little Provedore Pty Ltd', amount: 4210 },
+          { draft_id: null, to_name: 'Skipped Co' },
+        ],
+      },
+    });
+    const messages = [message('draft_bas_for_clients_mcp_bas_prep', batch)];
+    expect(findDraftPreview(messages, 'd_1')?.fields).toEqual([
+      { key: 'to_name', value: 'Little Provedore Pty Ltd' },
+      { key: 'amount', value: '4,210' },
+    ]);
   });
 
   test('indexes the MCP catalog by runtime name', () => {

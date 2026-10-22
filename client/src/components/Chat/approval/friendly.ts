@@ -206,8 +206,15 @@ export function parseToolOutput(output: unknown): Record<string, unknown> | unde
 
 /** Tools whose result carries the draft a later send or approve call refers to. */
 export function isDraftProducingTool(name: string): boolean {
+  /** LibreChat strips a leading `<server>_` from MCP tool names, so `email_draft_client_email`
+   *  on server `email` arrives as `draft_client_email`. */
   const bare = stripMCPSuffix(name);
-  return bare.includes('_draft_') || bare === 'drafts_get_draft';
+  return (
+    bare.startsWith('draft_') ||
+    bare.includes('_draft_') ||
+    bare === 'get_draft' ||
+    bare.endsWith('_get_draft')
+  );
 }
 
 function draftIdOf(value: unknown): string | undefined {
@@ -272,8 +279,15 @@ export function findDraftPreview(
       if (typeof data !== 'object' || data === null || Array.isArray(data)) {
         continue;
       }
-      const record = data as Record<string, unknown>;
-      if (draftIdOf(record.draft_id) !== wanted) {
+      /** A batch tool lists its drafts in an array (e.g. `data.rows`), one record each. */
+      const candidates = [data, ...Object.values(data).flatMap((v) => (Array.isArray(v) ? v : []))];
+      const record = candidates.find(
+        (c): c is Record<string, unknown> =>
+          typeof c === 'object' &&
+          c !== null &&
+          draftIdOf((c as Record<string, unknown>).draft_id) === wanted,
+      );
+      if (record == null) {
         continue;
       }
       const fields: DraftPreview['fields'] = [];
