@@ -71,14 +71,19 @@ describe('argument formatter', () => {
     expect(formatArgumentValue({ a: 1 }, labels)).toEqual({ value: '{"a":1}', kind: 'code' });
   });
 
-  test('labels rows from the schema description, else the humanised field name', () => {
+  test('labels rows from the schema title, else the humanised field name, never the description', () => {
     const rows = buildArgumentRows(
       { draft_id: 'd_8f3a2c', note: 'Looks good', send_copy: true, cc: undefined },
       {
         parameters: {
           type: 'object',
           properties: {
-            draft_id: { type: 'string', description: 'The draft id returned by a draft_ tool.' },
+            draft_id: {
+              type: 'string',
+              title: 'Draft',
+              description: 'The draft id returned by a draft_ tool.',
+            },
+            note: { type: 'string', description: 'Optional note recorded with the decision.' },
           },
         },
       },
@@ -87,7 +92,7 @@ describe('argument formatter', () => {
     expect(rows).toEqual([
       {
         key: 'draft_id',
-        label: 'The draft id returned by a draft_ tool',
+        label: 'Draft',
         value: 'd_8f3a2c',
         kind: 'code',
       },

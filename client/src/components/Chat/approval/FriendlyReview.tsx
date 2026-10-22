@@ -49,6 +49,8 @@ export default function FriendlyReview({
   const queryClient = useQueryClient();
   const [detailsOpen, setDetailsOpen] = useState(false);
   const title = friendlyToolTitle(request.name, info);
+  /** Tool descriptions are written for the model; the first sentence is the plain summary. */
+  const summary = info?.description?.trim().split(/(?<=[.!?])\s+/)[0];
 
   const { draft, rows, raw } = useMemo(() => {
     const args = parseArguments(request.arguments);
@@ -83,9 +85,7 @@ export default function FriendlyReview({
           {heading}
           {title}
         </h3>
-        {info?.description && (
-          <p className="text-text-secondary mt-0.5 text-sm">{info.description}</p>
-        )}
+        {summary && <p className="text-text-secondary mt-0.5 text-sm">{summary}</p>}
       </div>
 
       {draft != null && draft.fields.length > 0 && (

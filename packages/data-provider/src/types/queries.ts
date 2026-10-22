@@ -221,7 +221,7 @@ export type MCPTool = {
   /** Normalised JSON schema for the tool's input; field descriptions label arguments on review. */
   parameters?: {
     type?: string;
-    properties?: Record<string, { type?: string | string[]; description?: string }>;
+    properties?: Record<string, { type?: string | string[]; title?: string; description?: string }>;
     required?: string[];
   };
 };

@@ -71,12 +71,11 @@ export function humaniseFieldName(key: string): string {
   return spaced.length === 0 ? key : spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
+/** A schema `title` names the field for people; descriptions are written for the model,
+ *  so they are not used as labels. Without a title the field name is humanised. */
 function fieldLabel(key: string, info?: FriendlyToolInfo): string {
-  const description = info?.parameters?.properties?.[key]?.description?.trim();
-  if (description && description.length > 0) {
-    return description.replace(/\.\s*$/, '');
-  }
-  return humaniseFieldName(key);
+  const title = info?.parameters?.properties?.[key]?.title?.trim();
+  return title && title.length > 0 ? title : humaniseFieldName(key);
 }
 
 function formatDate(value: string): string {
