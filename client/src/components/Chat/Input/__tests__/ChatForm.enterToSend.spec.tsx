@@ -16,6 +16,7 @@ import type { ChatFormValues } from '~/common';
 import { ChatContext, ChatFormProvider } from '~/Providers';
 import { AuthContextProvider } from '~/hooks/AuthContext';
 import { SteerHostTestProvider } from 'test/steerHost';
+import { startupConfigKey } from '~/data-provider';
 import ChatForm from '../ChatForm';
 
 const conversation = {
@@ -83,12 +84,25 @@ function Harness({ enterToSend }: { enterToSend: boolean }) {
   );
 }
 
-function renderComposer({ enterToSend }: { enterToSend: boolean }) {
+function renderComposer({
+  enterToSend,
+  composerSendHint,
+}: {
+  enterToSend: boolean;
+  composerSendHint?: boolean;
+}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   queryClient.setQueryData<TFile[]>([QueryKeys.files], []);
   queryClient.setQueryData([QueryKeys.endpoints], { [EModelEndpoint.openAI]: { order: 0 } });
+  if (composerSendHint != null) {
+    for (const authenticated of [false, true]) {
+      queryClient.setQueryData(startupConfigKey(authenticated), {
+        interface: { composerSendHint },
+      });
+    }
+  }
 
   return render(
     <QueryClientProvider client={queryClient}>
@@ -136,5 +150,24 @@ describe('ChatForm enterToSend prop', () => {
 
     const hint = document.getElementById('composer-hint-0') as HTMLElement;
     expect(hint).toHaveTextContent('Enter to send');
+  }, 20000);
+
+  test('shows the send key only while the focused composer holds text, with the lever on', async () => {
+    renderComposer({ enterToSend: true, composerSendHint: true });
+
+    const textarea = await screen.findByTestId('text-input');
+    await userEvent.type(textarea, 'hi');
+    expect(screen.getByTestId('composer-send-hint')).toHaveTextContent('Enter to send');
+
+    await userEvent.tab();
+    expect(screen.queryByTestId('composer-send-hint')).not.toBeInTheDocument();
+  }, 20000);
+
+  test('shows no visible send key with the lever off', async () => {
+    renderComposer({ enterToSend: true, composerSendHint: false });
+
+    const textarea = await screen.findByTestId('text-input');
+    await userEvent.type(textarea, 'hi');
+    expect(screen.queryByTestId('composer-send-hint')).not.toBeInTheDocument();
   }, 20000);
 });
