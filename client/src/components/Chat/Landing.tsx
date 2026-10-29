@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { HatGlasses } from 'lucide-react';
 import { easings } from '@react-spring/web';
-import { EModelEndpoint } from 'librechat-data-provider';
+import { EModelEndpoint, normalizeServerName } from 'librechat-data-provider';
 import { BirthdayIcon, TooltipAnchor, SplitText, useRemScale } from '@librechat/client';
 import { useChatContext, useAgentsMapContext, useAssistantsMapContext } from '~/Providers';
 import Description, { isHtmlDescription } from '~/components/ui/Description';
@@ -9,6 +9,7 @@ import { useGetEndpointsQuery, useGetStartupConfig } from '~/data-provider';
 import { getIconEndpoint, getEntity, getModelSpec } from '~/utils';
 import { useLocalize, useAuthContext, useGreeting } from '~/hooks';
 import { useChatSettings } from '~/Providers/ChatSettingsContext';
+import { useMCPIconMap, useMCPServerTitles } from '~/hooks/MCP';
 import AgentContact from '~/components/Agents/AgentContact';
 import ConvoIcon from '~/components/Endpoints/ConvoIcon';
 
@@ -77,6 +78,18 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
     [conversation?.spec, startupConfig],
   );
 
+  const mcpIconMap = useMCPIconMap();
+  const mcpServerTitles = useMCPServerTitles();
+  /** The systems this assistant can read, named the way the deployment titles them. */
+  const connectedSystems = useMemo(
+    () =>
+      (modelSpec?.mcpServers ?? []).map((server) => {
+        const key = normalizeServerName(server);
+        return { key, title: mcpServerTitles.get(key) ?? server, icon: mcpIconMap.get(key) };
+      }),
+    [modelSpec?.mcpServers, mcpServerTitles, mcpIconMap],
+  );
+
   const brandedSpecLabel = modelSpec?.showOnLanding ? modelSpec.label : '';
   const brandedSpecDescription = (modelSpec?.showOnLanding && modelSpec.description) || '';
   const name =
@@ -139,7 +152,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
 
   return (
     <div
-      className={`flex h-full transform-gpu flex-col items-center justify-center pb-16 transition-all duration-200 ${centerFormOnLanding ? 'max-h-full sm:max-h-0' : 'max-h-full'} ${getDynamicMargin}`}
+      className={`flex h-full transform-gpu flex-col items-center justify-center pb-16 transition-all duration-200 ${centerFormOnLanding ? 'max-h-full sm:mb-2 sm:h-auto sm:pb-4' : 'max-h-full'} ${getDynamicMargin}`}
     >
       <div ref={contentRef} className="flex flex-col items-center gap-0 p-2">
         <div
@@ -215,6 +228,22 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
               : `animate-fadeIn mt-4 max-w-md text-center text-sm font-normal ${isTemporary ? 'text-text-secondary' : 'text-text-primary'}`
           }
         />
+        {connectedSystems.length > 0 && !isTemporary && (
+          <div className="animate-fadeIn mt-4 flex max-w-xl flex-wrap items-center justify-center gap-x-2 gap-y-2 text-sm">
+            <span className="text-text-secondary">{localize('com_ui_connected_to')}</span>
+            <ul className="contents">
+              {connectedSystems.map(({ key, title, icon }) => (
+                <li
+                  key={key}
+                  className="border-border-light bg-surface-primary text-text-primary inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1"
+                >
+                  {icon && <img src={icon} alt="" className="size-4 rounded-sm" />}
+                  {title}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
         {selectedAgent && !isTemporary && (
           <AgentContact
             agent={selectedAgent}

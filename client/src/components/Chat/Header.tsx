@@ -24,6 +24,7 @@ import BookmarkMenu from './Menus/BookmarkMenu';
 import { useChatContext } from '~/Providers';
 import AddMultiConvo from './AddMultiConvo';
 import { useHasAccess } from '~/hooks';
+import HelpGuide from './HelpGuide';
 import { cn } from '~/utils';
 import store from '~/store';
 
@@ -133,6 +134,7 @@ function Header({
 
       <div className={cn('flex shrink-0 items-center gap-2', hiddenBehindNav)}>
         {showTemporaryChat && <TemporaryChatIndicator />}
+        <HelpGuide />
         {!isNewChat && <NewChat className={isSmallScreen ? undefined : 'hidden'} />}
         {!isNewChat && parentConversationId == null && (
           <BackgroundTasksButton

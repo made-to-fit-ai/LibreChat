@@ -41,6 +41,11 @@ jest.mock('~/data-provider', () => ({
   useGetEndpointsQuery: () => ({ data: {} }),
 }));
 
+jest.mock('~/hooks/MCP', () => ({
+  useMCPIconMap: () => new Map(),
+  useMCPServerTitles: () => new Map(),
+}));
+
 jest.mock('~/hooks', () => ({
   useAuthContext: () => ({ user: undefined }),
   useGreeting: () => 'Welcome',

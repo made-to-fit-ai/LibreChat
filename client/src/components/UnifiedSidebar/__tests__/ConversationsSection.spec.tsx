@@ -82,6 +82,8 @@ jest.mock('~/store', () => {
   };
 });
 
+jest.mock('~/hooks/Conversations/useNewChat', () => () => ({ handleNewChatClick: jest.fn() }));
+
 jest.mock('~/hooks', () => ({
   __esModule: true,
   useLocalize: () => (key: string) => key,

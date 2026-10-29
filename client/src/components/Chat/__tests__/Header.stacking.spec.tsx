@@ -31,6 +31,7 @@ jest.mock('librechat-data-provider', () => ({
     jest.requireActual('librechat-data-provider').isForcedTemporaryRetention,
 }));
 jest.mock('~/data-provider', () => ({ useGetStartupConfig: () => ({ data: undefined }) }));
+jest.mock('../HelpGuide', () => () => null);
 jest.mock('~/hooks', () => ({ useHasAccess: () => false }));
 jest.mock('~/Providers', () => ({
   useChatContext: () => ({ conversation: mockConversation.current }),

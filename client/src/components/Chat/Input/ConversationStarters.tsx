@@ -1,4 +1,5 @@
 import { useMemo, useCallback } from 'react';
+import { MessageSquareText } from 'lucide-react';
 import { EModelEndpoint, Constants } from 'librechat-data-provider';
 import {
   useGetAssistantDocsQuery,
@@ -7,9 +8,10 @@ import {
 } from '~/data-provider';
 import { useChatContext, useAgentsMapContext, useAssistantsMapContext } from '~/Providers';
 import { getIconEndpoint, getEntity, getModelSpec } from '~/utils';
-import { useSubmitMessage } from '~/hooks';
+import { useSubmitMessage, useLocalize } from '~/hooks';
 
 const ConversationStarters = () => {
+  const localize = useLocalize();
   const { conversation } = useChatContext();
   const agentsMap = useAgentsMapContext();
   const assistantMap = useAssistantsMapContext();
@@ -72,20 +74,33 @@ const ConversationStarters = () => {
   }
 
   return (
-    <div className="mt-2 mb-8 flex w-full flex-wrap items-stretch justify-center gap-2 px-4">
-      {conversation_starters
-        .slice(0, Constants.MAX_CONVO_STARTERS)
-        .map((text: string, index: number) => (
-          <button
-            key={index}
-            onClick={() => sendConversationStarter(text)}
-            style={{ animationDelay: `${index * 75}ms`, animationFillMode: 'backwards' }}
-            className="bg-surface-secondary text-text-secondary fade-in hover:bg-surface-hover hover:text-text-primary focus-visible:ring-text-primary flex max-w-[16rem] cursor-pointer items-center justify-center rounded-2xl px-4 py-2.5 text-center text-sm transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-hidden"
-          >
-            <span className="line-clamp-2 text-balance break-words">{text}</span>
-          </button>
-        ))}
-    </div>
+    <section aria-labelledby="conversation-starters-heading" className="mt-2 mb-8 w-full px-4">
+      <h2
+        id="conversation-starters-heading"
+        className="text-text-secondary mb-3 text-center text-sm font-medium"
+      >
+        {localize('com_ui_try_asking')}
+      </h2>
+      <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
+        {conversation_starters
+          .slice(0, Constants.MAX_CONVO_STARTERS)
+          .map((text: string, index: number) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => sendConversationStarter(text)}
+              style={{ animationDelay: `${index * 75}ms`, animationFillMode: 'backwards' }}
+              className="border-border-medium bg-surface-primary text-text-primary fade-in hover:bg-surface-hover hover:border-border-heavy focus-visible:ring-text-primary flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-start text-sm shadow-xs transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-hidden [&:nth-child(n+3)]:max-sm:hidden"
+            >
+              <MessageSquareText
+                className="text-text-secondary mt-0.5 size-4 shrink-0"
+                aria-hidden="true"
+              />
+              <span className="line-clamp-3 break-words">{text}</span>
+            </button>
+          ))}
+      </div>
+    </section>
   );
 };
 
