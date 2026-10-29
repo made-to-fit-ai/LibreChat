@@ -1042,7 +1042,8 @@ const ChatForm = memo(function ChatForm({
           <Hints
             index={index}
             enterToSend={enterToSend}
-            showSendKey={startupConfig?.interface?.composerSendHint === true && isTextAreaFocused}
+            sendKeyHint={startupConfig?.interface?.composerSendHint === true}
+            focused={isTextAreaFocused}
             hasText={(textValue?.trim() ?? '') !== ''}
             isSubmitting={isSubmitting}
             duringRunActive={steering.duringRunActive}

@@ -33,12 +33,20 @@ const description = (index = 0) => document.getElementById(composerHintId(index)
 
 describe('composer hints', () => {
   it('shows the modifier send key while focused with text when the lever is on', () => {
-    render(<Hints {...baseState} enterToSend={false} showSendKey index={0} />);
+    render(<Hints {...baseState} enterToSend={false} sendKeyHint focused index={0} />);
     expect(screen.getByTestId('composer-send-hint')).toHaveTextContent('Ctrl+⏎ to send');
   });
 
+  it.each([{ isSubmitting: true }, { isSubmitting: true, duringRunActive: true }])(
+    'hides the visible send key during a run (%j)',
+    (state) => {
+      render(<Hints {...baseState} {...state} sendKeyHint focused index={0} />);
+      expect(screen.queryByTestId('composer-send-hint')).not.toBeInTheDocument();
+    },
+  );
+
   it('shows nothing visible without text', () => {
-    render(<Hints {...baseState} hasText={false} showSendKey index={0} />);
+    render(<Hints {...baseState} hasText={false} sendKeyHint focused index={0} />);
     expect(screen.queryByTestId('composer-send-hint')).not.toBeInTheDocument();
   });
 

@@ -3104,7 +3104,8 @@ export const interfaceSchema = z
      *  wording and its raw output behind a disclosure, for non-technical staff. */
     plainToolDetails: z.boolean().optional(),
     /** Shows the composer's send key (⌘/Ctrl+Enter, or Enter) beneath it while it
-     *  is focused and holds text. Screen readers always get it as a description. */
+     *  is focused and holds text, in a row reserved under the composer. Hidden
+     *  below `sm`. Screen readers always get it as a description. */
     composerSendHint: z.boolean().optional(),
     mcpServers: mcpServersSchema.optional(),
     modelSelect: z.boolean().optional(),

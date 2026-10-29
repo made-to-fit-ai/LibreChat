@@ -1,6 +1,6 @@
 import { TooltipAnchor, NewChatIcon, Button } from '@librechat/client';
+import type { MouseEvent } from 'react';
 import { useShortcutAriaKey, useShortcutHint } from '~/hooks/useKeyboardShortcuts';
-import useNewChat from '~/hooks/Conversations/useNewChat';
 import { useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 
@@ -9,9 +9,15 @@ import { cn } from '~/utils';
  * modified clicks still open `/c/new` in a new tab; `useNewChat` claims only
  * plain left clicks.
  */
-export default function NewChat({ className }: { className?: string }) {
+export default function NewChat({
+  onClick,
+  className,
+}: {
+  /** `useNewChat().handleNewChatClick`, owned by the header. */
+  onClick: (event: MouseEvent<HTMLElement>) => void;
+  className?: string;
+}) {
   const localize = useLocalize();
-  const { handleNewChatClick } = useNewChat();
   const tooltipDescription = useShortcutHint('newChat', localize('com_ui_new_chat'));
   const ariaKey = useShortcutAriaKey('newChat');
 
@@ -30,7 +36,7 @@ export default function NewChat({ className }: { className?: string }) {
             data-testid="header-new-chat-button"
             aria-label={localize('com_ui_new_chat')}
             aria-keyshortcuts={ariaKey}
-            onClick={handleNewChatClick}
+            onClick={onClick}
           >
             <NewChatIcon className="icon-md" aria-hidden="true" />
           </a>

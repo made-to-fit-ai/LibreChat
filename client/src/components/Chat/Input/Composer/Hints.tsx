@@ -13,33 +13,38 @@ export const composerHintId = (index: number) => `composer-hint-${index}`;
  * re-announce on every keystroke as the hint flips between idle and typing, so
  * the description channel carries it instead.
  *
- * `showSendKey` (`interface.composerSendHint` while the composer has focus) also
- * shows the send line to sighted users once there is text. It sits in the band's
- * bottom clearance, so it never moves the composer; below `sm` that clearance is
- * gone, and a touch keyboard has no ⌘ or Ctrl to name anyway.
+ * `sendKeyHint` (`interface.composerSendHint`) also shows the send line to sighted
+ * users while the composer is focused and holds text. Its row is reserved whenever
+ * the lever is on, so the composer never moves and nothing positioned beneath the
+ * form can overlap it. Below `sm`, where a touch keyboard has no ⌘ or Ctrl to
+ * name, the row is not rendered.
  */
 function Hints({
   index,
   enterToSend,
-  showSendKey = false,
+  sendKeyHint = false,
+  focused = false,
   ...state
-}: ComposerHintState & { index: number; showSendKey?: boolean }) {
+}: ComposerHintState & { index: number; sendKeyHint?: boolean; focused?: boolean }) {
   const hint = useComposerHint({ ...state, enterToSend });
-  const showVisible = showSendKey && state.hasText && !state.isSubmitting && hint.kind === 'tip';
+  const showSendKey = focused && state.hasText && !state.isSubmitting && hint.kind === 'tip';
 
   return (
     <>
       <span id={composerHintId(index)} className="sr-only">
         {hint.text}
       </span>
-      {showVisible && (
-        <span
-          aria-hidden="true"
-          data-testid="composer-send-hint"
-          className="text-text-secondary pointer-events-none absolute end-4 top-full hidden text-xs leading-4 sm:block"
-        >
-          {hint.text}
-        </span>
+      {sendKeyHint && (
+        <div aria-hidden="true" className="hidden h-4 justify-end px-4 sm:flex">
+          {showSendKey && (
+            <span
+              data-testid="composer-send-hint"
+              className="text-text-secondary text-xs leading-4"
+            >
+              {hint.text}
+            </span>
+          )}
+        </div>
       )}
     </>
   );
