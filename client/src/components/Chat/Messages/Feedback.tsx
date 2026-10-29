@@ -149,17 +149,22 @@ function FeedbackButtons({
       <Ariakit.PopoverAnchor
         store={upStore}
         render={
-          <Button
-            variant="ghost"
-            size="icon"
-            className={buttonClasses(feedback?.rating === 'thumbsUp', isLast)}
-            onClick={handleThumbsUpClick}
-            title={localize('com_ui_feedback_positive')}
-            aria-pressed={feedback?.rating === 'thumbsUp'}
-            aria-haspopup="menu"
-          >
-            <ThumbUpIcon size="1.1875rem" bold={feedback?.rating === 'thumbsUp'} />
-          </Button>
+          <TooltipAnchor
+            description={localize('com_ui_feedback_positive')}
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className={buttonClasses(feedback?.rating === 'thumbsUp', isLast)}
+                onClick={handleThumbsUpClick}
+                aria-label={localize('com_ui_feedback_positive')}
+                aria-pressed={feedback?.rating === 'thumbsUp'}
+                aria-haspopup="menu"
+              >
+                <ThumbUpIcon size="1.1875rem" bold={feedback?.rating === 'thumbsUp'} />
+              </Button>
+            }
+          />
         }
       />
       <Ariakit.Popover
@@ -184,17 +189,22 @@ function FeedbackButtons({
       <Ariakit.PopoverAnchor
         store={downStore}
         render={
-          <Button
-            variant="ghost"
-            size="icon"
-            className={buttonClasses(feedback?.rating === 'thumbsDown', isLast)}
-            onClick={handleThumbsDownClick}
-            title={localize('com_ui_feedback_negative')}
-            aria-pressed={feedback?.rating === 'thumbsDown'}
-            aria-haspopup="menu"
-          >
-            <ThumbDownIcon size="1.1875rem" bold={feedback?.rating === 'thumbsDown'} />
-          </Button>
+          <TooltipAnchor
+            description={localize('com_ui_feedback_negative')}
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className={buttonClasses(feedback?.rating === 'thumbsDown', isLast)}
+                onClick={handleThumbsDownClick}
+                aria-label={localize('com_ui_feedback_negative')}
+                aria-pressed={feedback?.rating === 'thumbsDown'}
+                aria-haspopup="menu"
+              >
+                <ThumbDownIcon size="1.1875rem" bold={feedback?.rating === 'thumbsDown'} />
+              </Button>
+            }
+          />
         }
       />
       <Ariakit.Popover

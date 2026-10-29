@@ -1,6 +1,6 @@
 import { useState, useId, useRef, memo, useMemo, useCallback } from 'react';
 import * as Ariakit from '@ariakit/react';
-import { DropdownPopup, Spinner } from '@librechat/client';
+import { DropdownPopup, Spinner, TooltipAnchor } from '@librechat/client';
 import { Ellipsis, Archive, ArchiveRestore, Mail, Pen, Pin, Trash } from 'lucide-react';
 import type { MouseEvent } from 'react';
 import type { ConvoMenuHandlers, ConvoMenuLoading } from './Controller';
@@ -227,6 +227,12 @@ function ConvoOptions({
             id={`conversation-menu-${conversationId}`}
             aria-label={localize('com_nav_convo_menu_options')}
             aria-expanded={isPopoverActive}
+            render={
+              <TooltipAnchor
+                description={localize('com_nav_convo_menu_options')}
+                render={<button type="button" />}
+              />
+            }
             /** Shared with the shift-held variant so both obey the same reveal rules. */
             className={cn(
               buttonClassName,

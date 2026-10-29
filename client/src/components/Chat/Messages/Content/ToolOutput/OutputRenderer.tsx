@@ -179,7 +179,11 @@ export default function OutputRenderer({
     <div>
       <div className="group/copy relative">
         {isJson ? (
-          <pre dir="ltr" className="max-h-[18.75rem] overflow-auto rounded text-xs">
+          <pre
+            dir="ltr"
+            tabIndex={0}
+            className="focus-visible:ring-text-primary max-h-[18.75rem] overflow-auto rounded text-xs focus-visible:ring-2 focus-visible:outline-hidden"
+          >
             <code className="hljs language-json !break-words !whitespace-pre-wrap">
               {displayText}
             </code>
@@ -188,9 +192,10 @@ export default function OutputRenderer({
           <pre
             dir="ltr"
             ref={outputRef}
+            tabIndex={0}
             onScroll={terminal ? handleOutputScroll : undefined}
             className={cn(
-              'max-h-[18.75rem] overflow-auto text-xs break-words whitespace-pre-wrap',
+              'focus-visible:ring-text-primary max-h-[18.75rem] overflow-auto text-xs break-words whitespace-pre-wrap focus-visible:ring-2 focus-visible:outline-hidden',
               error && 'text-status-error font-mono',
               !error && structured && 'font-mono',
               !error && structured && (terminal ? 'text-text-primary' : 'text-text-secondary'),
