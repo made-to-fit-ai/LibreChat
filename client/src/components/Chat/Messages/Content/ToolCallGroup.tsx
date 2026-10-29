@@ -14,6 +14,13 @@ import {
   getActivityLabelText,
 } from '~/utils';
 import {
+  useMCPIconMap,
+  useMCPServerNames,
+  useMCPServerTitles,
+  useMCPToolTitles,
+  useMCPReadOnlyTools,
+} from '~/hooks/MCP';
+import {
   FoldRail,
   RailGlyph,
   useFoldPath,
@@ -28,7 +35,6 @@ import {
   useFailedRevealTrigger,
 } from './reveal';
 import { useLocalize, useExpandCollapse, scheduleMessageContentLayoutReconcile } from '~/hooks';
-import { useMCPIconMap, useMCPServerNames, useMCPServerTitles } from '~/hooks/MCP';
 import { ASK_USER_QUESTION, getSubmittedAskAnswer } from '~/utils/approval';
 import { useMessagePartsHost } from '~/Providers/MessagePartsHostContext';
 import { ToolAuthWarning, ToolAuthWarningContext } from './auth';
@@ -100,6 +106,8 @@ export default function ToolCallGroup({
   const mcpIconMap = useMCPIconMap();
   const mcpServerNames = useMCPServerNames();
   const mcpServerTitles = useMCPServerTitles();
+  const mcpToolTitles = useMCPToolTitles();
+  const mcpReadOnlyTools = useMCPReadOnlyTools();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const headerRef = useRef<HTMLDivElement | null>(null);
   const railHover = useRailHover();
@@ -312,13 +320,13 @@ export default function ToolCallGroup({
 
   /** For a single-tool group, lead with the tool's own (capitalized) label
    *  instead of the generic "Used 1 tool: name", which reads awkwardly. */
-  const singleToolIsCode =
-    toolMetadata[0]?.name != null &&
-    parseToolName(toolMetadata[0].name, mcpServerNames).friendlyKey === 'com_ui_tool_name_code';
-  /** A lone MCP call says which system was checked rather than naming the server alone. */
-  const singleToolIsMCP =
-    toolMetadata[0]?.name != null &&
-    parseToolName(toolMetadata[0].name, mcpServerNames).mcpServer !== '';
+  const singleToolName = toolMetadata[0]?.name ?? '';
+  const singleToolParsed = useMemo(
+    () => parseToolName(singleToolName, mcpServerNames),
+    [singleToolName, mcpServerNames],
+  );
+  const singleToolIsCode = singleToolParsed.friendlyKey === 'com_ui_tool_name_code';
+  const singleToolIsMCP = singleToolParsed.mcpServer !== '';
   const singleToolLabel = useMemo(() => {
     const raw = getToolDisplayLabel(
       toolMetadata[0]?.name ?? '',
@@ -556,10 +564,22 @@ export default function ToolCallGroup({
           ? localize('com_assistants_completed_function', { 0: singleToolLabel })
           : singleToolLabel;
       }
-      if (singleToolIsMCP && singleToolLabel && !toolMetadata[0]?.failed) {
-        return localize(groupDone ? 'com_ui_checked_var' : 'com_ui_checking_var', {
-          0: singleToolLabel,
-        });
+      /** A lone MCP call names what it did: a read-only lookup as "Checked <system>", anything
+       *  else (a send, an approval) by its own title, so a write never reads as a look. */
+      const only = toolMetadata[0];
+      if (singleToolIsMCP && singleToolLabel && !only?.failed) {
+        if (only?.cancelled) {
+          return localize('com_ui_cancelled');
+        }
+        if (mcpReadOnlyTools.has(singleToolName)) {
+          return localize(groupDone ? 'com_ui_checked_var' : 'com_ui_checking_var', {
+            0: singleToolLabel,
+          });
+        }
+        const title = mcpToolTitles.get(singleToolName);
+        if (title) {
+          return title;
+        }
       }
       return singleToolLabel || localize('com_ui_used_one_tool');
     }

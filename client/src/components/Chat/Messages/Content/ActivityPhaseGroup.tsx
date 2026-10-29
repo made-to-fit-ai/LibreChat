@@ -28,13 +28,18 @@ import {
   revealFoldHeader,
   FoldHeaderContext,
 } from './rail';
+import {
+  useMCPIconMap,
+  useMCPServerNames,
+  useMCPServerTitles,
+  useMCPReadOnlyTools,
+} from '~/hooks/MCP';
 import { FailedRevealContext, FailedRevealPill, useFailedRevealTrigger } from './reveal';
 import { FOLD_RAIL_CLASSES, ROW_GLYPH_SLOT, TOOL_ROW_CLASSES } from './rows';
 import { getOutcomeStatus, isSpanFailed, summarizeSpan } from './outcome';
 import useSmoothStreaming from '~/hooks/Messages/useSmoothStreaming';
 import useThrottledValue from '~/hooks/Messages/useThrottledValue';
 import { sandboxStartingByToolCallId } from '~/hooks/SSE/sandbox';
-import { useMCPIconMap, useMCPServerNames } from '~/hooks/MCP';
 import { getActivityLabelText } from '~/utils/activityLabels';
 import { MCPAppViews } from '~/components/MCPUIResource';
 import { MessageSurfaceContext } from '../ui/surface';
@@ -301,10 +306,16 @@ function LivePhaseHeader({
   const localize = useLocalize();
   const mcpIconMap = useMCPIconMap();
   const mcpServerNames = useMCPServerNames();
+  const mcpServerTitles = useMCPServerTitles();
+  const mcpReadOnlyTools = useMCPReadOnlyTools();
+  const mcpLabels = useMemo(
+    () => ({ serverTitles: mcpServerTitles, readOnlyTools: mcpReadOnlyTools }),
+    [mcpServerTitles, mcpReadOnlyTools],
+  );
   const attachmentsById = useMemo(() => mapAttachments(attachments ?? []), [attachments]);
   const activity = useMemo(
-    () => getLiveActivity(parts, localize, mcpServerNames, attachmentsById, expanded),
-    [parts, localize, mcpServerNames, attachmentsById, expanded],
+    () => getLiveActivity(parts, localize, mcpServerNames, attachmentsById, expanded, mcpLabels),
+    [parts, localize, mcpServerNames, attachmentsById, expanded, mcpLabels],
   );
   /** A code card names its sandbox startup from events outside the content
    *  array. The row reads the same signal for its newest call, so the span

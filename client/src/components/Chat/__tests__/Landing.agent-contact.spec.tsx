@@ -9,6 +9,8 @@ let mockConversation: Record<string, unknown> | null = null;
 let mockAgentsMap: Record<string, any> | undefined;
 let mockAssistantMap: Record<string, any> | undefined;
 let mockInterfaceConfig: Record<string, unknown> = {};
+let mockModelSpec: Record<string, unknown> | undefined;
+let mockServerTitles = new Map<string, string>();
 
 jest.mock('@react-spring/web', () => ({
   easings: {
@@ -21,6 +23,7 @@ jest.mock('librechat-data-provider', () => ({
     azureOpenAI: 'azureOpenAI',
     openAI: 'openAI',
   },
+  normalizeServerName: (name: string) => name,
 }));
 
 jest.mock('@librechat/client', () => ({
@@ -43,7 +46,9 @@ jest.mock('~/data-provider', () => ({
 
 jest.mock('~/hooks/MCP', () => ({
   useMCPIconMap: () => new Map(),
-  useMCPServerTitles: () => new Map(),
+  useMCPServerTitles: () => mockServerTitles,
+  useMCPToolTitles: () => new Map(),
+  useMCPReadOnlyTools: () => new Set(),
 }));
 
 jest.mock('~/hooks', () => ({
@@ -67,7 +72,7 @@ jest.mock('~/utils', () => ({
   cn: (...classes: string[]) => classes.filter(Boolean).join(' '),
   createConfigHtmlSanitizer: () => (html: string) => html,
   getIconEndpoint: ({ endpoint }: { endpoint: string }) => endpoint,
-  getModelSpec: () => undefined,
+  getModelSpec: () => mockModelSpec,
   getEntity: ({
     endpoint,
     agentsMap,
@@ -274,5 +279,39 @@ describe('Landing heading', () => {
 
     expect(screen.getByText('Hello there')).toBeInTheDocument();
     expect(screen.queryByText('Data Analyst')).not.toBeInTheDocument();
+  });
+});
+
+describe('Landing connected systems', () => {
+  beforeEach(() => {
+    mockInterfaceConfig = {};
+    mockConversation = { endpoint: 'agents', spec: 'clinic' };
+    mockAgentsMap = undefined;
+    mockAssistantMap = undefined;
+    mockServerTitles = new Map([['xestro', 'Xestro']]);
+  });
+
+  afterEach(() => {
+    mockModelSpec = undefined;
+  });
+
+  it('lists the server titles when the spec hides the badge row', () => {
+    mockModelSpec = { name: 'clinic', hideBadgeRow: true, mcpServers: ['xestro', 'billing'] };
+
+    renderLanding();
+
+    expect(screen.getByText('com_ui_connected_to')).toBeInTheDocument();
+    const list = screen.getByRole('list', { name: 'com_ui_connected_to' });
+    expect(list).toHaveTextContent('Xestro');
+    expect(list).toHaveTextContent('billing');
+  });
+
+  it('leaves the row out when the badge row still names the servers', () => {
+    mockModelSpec = { name: 'clinic', mcpServers: ['xestro'] };
+
+    renderLanding();
+
+    expect(screen.queryByText('com_ui_connected_to')).not.toBeInTheDocument();
+    expect(screen.queryByText('Xestro')).not.toBeInTheDocument();
   });
 });

@@ -183,7 +183,9 @@ function ChatPane({
                                together, so it holds the same band back here. Without
                                it the composer lands 4px right of where a conversation
                                puts it and slides sideways on the way in. */
-                              'scrollbar-gutter-spacer min-h-0 flex-1 items-center justify-end-safe overflow-y-auto sm:justify-center-safe'
+                              /* Plain alignment first: engines without `safe` (Safari before 17.6) drop
+                               the safe declaration and keep this one. */
+                              'scrollbar-gutter-spacer min-h-0 flex-1 items-center justify-end justify-end-safe overflow-y-auto sm:justify-center sm:justify-center-safe'
                             : 'h-full overflow-y-auto',
                           !isLandingPage && chatProjectId && 'pt-9',
                         )}

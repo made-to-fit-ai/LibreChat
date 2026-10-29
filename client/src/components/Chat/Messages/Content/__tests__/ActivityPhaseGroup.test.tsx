@@ -17,6 +17,9 @@ jest.mock('~/hooks/Messages/useSmoothStreaming', () => ({
 jest.mock('~/hooks/MCP', () => ({
   useMCPIconMap: () => new Map(),
   useMCPServerNames: () => [],
+  useMCPServerTitles: () => new Map(),
+  useMCPToolTitles: () => new Map(),
+  useMCPReadOnlyTools: () => new Set(),
 }));
 
 jest.mock('~/hooks', () => {

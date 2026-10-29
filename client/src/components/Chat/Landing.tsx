@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef, useId } from 'react';
 import { HatGlasses } from 'lucide-react';
 import { easings } from '@react-spring/web';
 import { EModelEndpoint, normalizeServerName } from 'librechat-data-provider';
@@ -79,15 +79,17 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   );
 
   const mcpIconMap = useMCPIconMap();
+  const connectedLabelId = useId();
   const mcpServerTitles = useMCPServerTitles();
-  /** The systems this assistant can read, named the way the deployment titles them. */
+  /** The systems this assistant can read, named the way the deployment titles them. Shown only
+   *  when the spec hides the composer's server chips, which otherwise already name them. */
   const connectedSystems = useMemo(
     () =>
-      (modelSpec?.mcpServers ?? []).map((server) => {
+      (modelSpec?.hideBadgeRow === true ? (modelSpec.mcpServers ?? []) : []).map((server) => {
         const key = normalizeServerName(server);
         return { key, title: mcpServerTitles.get(key) ?? server, icon: mcpIconMap.get(key) };
       }),
-    [modelSpec?.mcpServers, mcpServerTitles, mcpIconMap],
+    [modelSpec?.hideBadgeRow, modelSpec?.mcpServers, mcpServerTitles, mcpIconMap],
   );
 
   const brandedSpecLabel = modelSpec?.showOnLanding ? modelSpec.label : '';
@@ -152,7 +154,7 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
 
   return (
     <div
-      className={`flex h-full transform-gpu flex-col items-center justify-center pb-16 transition-all duration-200 ${centerFormOnLanding ? 'max-h-full sm:mb-2 sm:h-auto sm:pb-4' : 'max-h-full'} ${getDynamicMargin}`}
+      className={`flex h-full transform-gpu flex-col items-center justify-center justify-center-safe pb-16 transition-all duration-200 ${centerFormOnLanding ? 'max-h-full sm:mb-2 sm:h-auto sm:max-h-none sm:pb-4' : 'max-h-full'} ${getDynamicMargin}`}
     >
       <div ref={contentRef} className="flex flex-col items-center gap-0 p-2">
         <div
@@ -230,8 +232,13 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
         />
         {connectedSystems.length > 0 && !isTemporary && (
           <div className="animate-fadeIn mt-4 flex max-w-xl flex-wrap items-center justify-center gap-x-2 gap-y-2 text-sm">
-            <span className="text-text-secondary">{localize('com_ui_connected_to')}</span>
-            <ul className="contents">
+            <span id={connectedLabelId} className="text-text-secondary">
+              {localize('com_ui_connected_to')}
+            </span>
+            <ul
+              aria-labelledby={connectedLabelId}
+              className="flex flex-wrap items-center justify-center gap-2"
+            >
               {connectedSystems.map(({ key, title, icon }) => (
                 <li
                   key={key}

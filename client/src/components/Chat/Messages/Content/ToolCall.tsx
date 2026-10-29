@@ -387,6 +387,11 @@ export default function ToolCall({
         ? localize('com_ui_tool_preparing', { 0: displayFunctionName })
         : localize('com_assistants_preparing_action'));
   }
+  /** A server-provided title already names the work ("Read overdue invoices"); a verb in
+   *  front of it ("Running Read overdue invoices") only garbles it. */
+  if (intent == null && preparationText == null && isMCPToolCall && mcpToolTitles.has(name)) {
+    inProgressText = displayFunctionName;
+  }
 
   const getFinishedText = () => {
     if (phase === 'cancelled') {

@@ -12,6 +12,8 @@ import { ToolAuthWarning } from '../auth';
 
 const mockMCPServerNames: string[] = [];
 const mockMCPServerTitles = new Map<string, string>();
+const mockMCPToolTitles = new Map<string, string>();
+const mockMCPReadOnlyTools = new Set<string>();
 
 jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string, values?: Record<string | number, string>) => {
@@ -107,6 +109,8 @@ jest.mock('~/hooks/MCP', () => {
     useMCPIconMap: () => new Map(),
     useMCPServerNames: () => mockMCPServerNames,
     useMCPServerTitles: () => mockMCPServerTitles,
+    useMCPToolTitles: () => mockMCPToolTitles,
+    useMCPReadOnlyTools: () => mockMCPReadOnlyTools,
   };
 });
 
@@ -326,6 +330,8 @@ describe('ToolCallGroup image hoisting', () => {
     mockScheduleMessageContentLayoutReconcile.mockClear();
     mockMCPServerNames.length = 0;
     mockMCPServerTitles.clear();
+    mockMCPToolTitles.clear();
+    mockMCPReadOnlyTools.clear();
     mockSubmittedAskAnswers.clear();
   });
 
@@ -910,14 +916,13 @@ describe('ToolCallGroup image hoisting', () => {
       lastContentIdx: 0,
     });
 
-    expect(
-      screen.getByRole('button', { name: /^Checked Google_mcp_Workspace$/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Google_mcp_Workspace$/ })).toBeInTheDocument();
   });
 
   it('labels an MCP tool with its server title when one is configured', () => {
     mockMCPServerNames.push('accounting_insights');
     mockMCPServerTitles.set('accounting_insights', 'Practice insights');
+    mockMCPReadOnlyTools.add('list_clients_mcp_accounting_insights');
     renderGroup({
       ...baseProps,
       parts: [
@@ -927,6 +932,20 @@ describe('ToolCallGroup image hoisting', () => {
     });
 
     expect(screen.getByRole('button', { name: /^Checked Practice insights$/ })).toBeInTheDocument();
+  });
+
+  it('names a lone MCP write by its own title, never as a check', () => {
+    mockMCPServerNames.push('xero');
+    mockMCPServerTitles.set('xero', 'Xero');
+    mockMCPToolTitles.set('send_invoice_mcp_xero', 'Send invoice');
+    renderGroup({
+      ...baseProps,
+      parts: [{ part: makePart('mcp-1', 'sent', 'send_invoice_mcp_xero'), idx: 0 }],
+      lastContentIdx: 0,
+    });
+
+    expect(screen.getByRole('button', { name: /^Send invoice$/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Checked/ })).not.toBeInTheDocument();
   });
 
   it('summarizes repeated completed web searches as an outcome and count', () => {

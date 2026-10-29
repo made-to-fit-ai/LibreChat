@@ -3787,9 +3787,9 @@
   "com_ui_terms_accept_failed": "Could not accept the terms. Please try again.",
   "com_ui_connected_to": "Connected to",
   "com_ui_help": "Help",
-  "com_ui_help_guide_intro": "Ask a question in the box at the bottom of the screen. The assistant looks up the answer in your organisation's systems and shows you where it came from.",
+  "com_ui_help_guide_intro": "Ask a question in the box at the bottom of the screen. The assistant looks up the answer in your organization's systems and shows you where it came from.",
   "com_ui_help_guide_tip_approval": "Nothing is sent without you. When the assistant prepares something to send, you review it first and choose to approve or reject it.",
-  "com_ui_help_guide_tip_new_chat": "Start a new chat for a new topic. Your past chats are listed on the left.",
+  "com_ui_help_guide_tip_new_chat": "Start a new chat for a new topic. Your past chats are listed in the sidebar.",
   "com_ui_help_guide_tip_sources": "Each answer lists the steps it took. Open a step to see exactly what was checked.",
   "com_ui_help_guide_tip_switch": "Switch assistant from the menu at the top of the screen.",
   "com_ui_help_guide_tip_words": "Ask in your own words, the way you would ask a colleague.",
@@ -3800,5 +3800,6 @@
   "com_ui_checked_var": "Checked {{0}}",
   "com_ui_checking_var": "Checking {{0}}",
   "com_ui_select_assistant": "Choose an assistant",
-  "com_ui_search_assistants": "Search assistants..."
+  "com_ui_search_assistants": "Search assistants...",
+  "com_ui_help_guide_intro_plain": "Ask a question in the box at the bottom of the screen."
 }

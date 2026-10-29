@@ -119,13 +119,11 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
         aria-label={localize('com_nav_account_settings')}
         /** The rail shows only the avatar, so name the menu on hover and focus. */
         render={
-          collapsed ? (
-            <TooltipAnchor
-              side={railSide}
-              description={localize('com_nav_account_settings')}
-              render={<button type="button" />}
-            />
-          ) : undefined
+          <TooltipAnchor
+            side={railSide}
+            description={localize('com_nav_account_settings')}
+            render={<button type="button" />}
+          />
         }
         data-testid="nav-user"
         className={

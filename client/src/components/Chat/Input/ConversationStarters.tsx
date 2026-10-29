@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useId } from 'react';
 import { MessageSquareText } from 'lucide-react';
 import { EModelEndpoint, Constants } from 'librechat-data-provider';
 import {
@@ -12,6 +12,7 @@ import { useSubmitMessage, useLocalize } from '~/hooks';
 
 const ConversationStarters = () => {
   const localize = useLocalize();
+  const headingId = useId();
   const { conversation } = useChatContext();
   const agentsMap = useAgentsMapContext();
   const assistantMap = useAssistantsMapContext();
@@ -74,11 +75,8 @@ const ConversationStarters = () => {
   }
 
   return (
-    <section aria-labelledby="conversation-starters-heading" className="mt-2 mb-8 w-full px-4">
-      <h2
-        id="conversation-starters-heading"
-        className="text-text-secondary mb-3 text-center text-sm font-medium"
-      >
+    <section aria-labelledby={headingId} className="mt-2 mb-8 w-full px-4">
+      <h2 id={headingId} className="text-text-secondary mb-3 text-center text-sm font-medium">
         {localize('com_ui_try_asking')}
       </h2>
       <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">

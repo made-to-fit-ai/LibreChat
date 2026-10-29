@@ -53,6 +53,7 @@ jest.mock('~/hooks/MCP', () => {
     useMCPAppFrame: jest.requireActual('~/hooks/MCP/useMCPAppFrame').useMCPAppFrame,
     useMCPServerNames: () => mcpServerNames,
     useMCPServerTitles: () => new Map(),
+    useMCPReadOnlyTools: () => new Set(),
     useMCPToolTitles: () => mockMCPToolTitles,
   };
 });

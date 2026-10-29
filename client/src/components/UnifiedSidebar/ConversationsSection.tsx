@@ -30,6 +30,7 @@ import ProjectsSection from '~/components/Conversations/ProjectsSection';
 import ChatFilterMenu from '~/components/Conversations/ChatFilterMenu';
 import PinnedSection from '~/components/Conversations/PinnedSection';
 import ProjectNamesProvider from '~/Providers/ProjectNamesContext';
+import { useShortcutAriaKey } from '~/hooks/useKeyboardShortcuts';
 import useDrawerViewport from '~/hooks/Nav/useDrawerViewport';
 import useSidebarToggle from '~/hooks/Nav/useSidebarToggle';
 import { Conversations } from '~/components/Conversations';
@@ -46,6 +47,7 @@ const ConversationsSection = memo(() => {
   const { setSidebarOpen } = useSidebarToggle();
   const { isAuthenticated } = useAuthContext();
   const { handleNewChatClick } = useNewChat();
+  const newChatAriaKey = useShortcutAriaKey('newChat');
   useTitleGeneration(isAuthenticated);
 
   const [isChatsExpanded, setIsChatsExpanded] = useLocalStorage('chatsExpanded', true);
@@ -236,7 +238,12 @@ const ConversationsSection = memo(() => {
         {!isSmallScreen && (
           <div className="px-2 pb-1">
             <Button asChild variant="nav" size="row" className="w-full justify-start">
-              <a href="/c/new" data-testid="nav-new-chat-row" onClick={handleNewChatClick}>
+              <a
+                href="/c/new"
+                data-testid="nav-new-chat-row"
+                aria-keyshortcuts={newChatAriaKey}
+                onClick={handleNewChatClick}
+              >
                 <SquarePen className="text-text-primary size-5 shrink-0" aria-hidden="true" />
                 <span className="text-text-primary text-sm font-medium">
                   {localize('com_ui_new_chat')}

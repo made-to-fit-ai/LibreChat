@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { normalizeServerName } from 'librechat-data-provider';
+import type { MCPTool } from 'librechat-data-provider';
 import { useMCPServersQuery, useMCPToolsQuery } from '~/data-provider';
 import { useCatalogReady } from '../useCatalogWarmup';
 
@@ -37,20 +38,38 @@ export function useMCPServerNames(): string[] {
 
 /** MCP tool titles keyed by runtime tool name (`<tool>_mcp_<server>`), for tool-call labels. */
 export function useMCPToolTitles(): Map<string, string> {
-  const mcpServersReady = useCatalogReady('mcpServers');
-  const { data } = useMCPToolsQuery({ enabled: mcpServersReady });
+  const tools = useMCPToolCatalog();
   return useMemo(() => {
     const map = new Map<string, string>();
-    for (const server of Object.values(data?.servers ?? {})) {
-      for (const tool of server.tools ?? []) {
-        const title = (tool.title ?? tool.annotations?.title)?.trim();
-        if (title) {
-          map.set(tool.pluginKey, title);
-        }
+    for (const tool of tools) {
+      const title = (tool.title ?? tool.annotations?.title)?.trim();
+      if (title) {
+        map.set(tool.pluginKey, title);
       }
     }
     return map;
-  }, [data]);
+  }, [tools]);
+}
+
+/** Runtime names of MCP tools whose server marks them read-only, so a call can read as a lookup. */
+export function useMCPReadOnlyTools(): Set<string> {
+  const tools = useMCPToolCatalog();
+  return useMemo(
+    () =>
+      new Set(
+        tools.filter((tool) => tool.annotations?.readOnlyHint === true).map((t) => t.pluginKey),
+      ),
+    [tools],
+  );
+}
+
+function useMCPToolCatalog(): MCPTool[] {
+  const mcpServersReady = useCatalogReady('mcpServers');
+  const { data } = useMCPToolsQuery({ enabled: mcpServersReady });
+  return useMemo(
+    () => Object.values(data?.servers ?? {}).flatMap((server) => server.tools ?? []),
+    [data],
+  );
 }
 
 /** Configured server titles keyed by the normalized server name, for tool-call labels. */

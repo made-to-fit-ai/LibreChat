@@ -182,6 +182,8 @@ export default function OutputRenderer({
           <pre
             dir="ltr"
             tabIndex={0}
+            role="region"
+            aria-label={localize('com_ui_output')}
             className="focus-visible:ring-text-primary max-h-[18.75rem] overflow-auto rounded text-xs focus-visible:ring-2 focus-visible:outline-hidden"
           >
             <code className="hljs language-json !break-words !whitespace-pre-wrap">
@@ -193,6 +195,8 @@ export default function OutputRenderer({
             dir="ltr"
             ref={outputRef}
             tabIndex={0}
+            role="region"
+            aria-label={localize('com_ui_output')}
             onScroll={terminal ? handleOutputScroll : undefined}
             className={cn(
               'focus-visible:ring-text-primary max-h-[18.75rem] overflow-auto text-xs break-words whitespace-pre-wrap focus-visible:ring-2 focus-visible:outline-hidden',
