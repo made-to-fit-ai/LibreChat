@@ -8,6 +8,8 @@ jest.mock('~/hooks', () => ({
       com_ui_parameters: 'Parameters',
       com_ui_tool_looked_up: 'What was looked up',
       com_ui_tool_show_raw: 'Show raw data',
+      com_ui_tool_sent: 'What was sent',
+      com_ui_details: 'Details',
     };
     return translations[key] || key;
   },
@@ -23,7 +25,6 @@ jest.mock('~/hooks', () => ({
 
 jest.mock('../ToolOutput', () => ({
   OutputRenderer: ({ text }: { text: string }) => <div data-testid="output-renderer">{text}</div>,
-  isError: (text: string) => text.startsWith('Error'),
 }));
 
 jest.mock('~/utils', () => ({
@@ -92,8 +93,8 @@ describe('ToolCallInfo', () => {
       parameters: { properties: { clinic_name: { title: 'Clinic' } } },
     };
 
-    it('labels arguments by schema title or humanised key, without the Parameters toggle', () => {
-      render(<ToolCallInfo input={input} output='{"rows": 3}' plain info={info} />);
+    it('labels a lookup by schema title or humanised key, without the Parameters toggle', () => {
+      render(<ToolCallInfo input={input} output='{"rows": 3}' wording="lookup" info={info} />);
       expect(screen.getByText('What was looked up')).toBeInTheDocument();
       expect(screen.getByText('Min days overdue')).toBeInTheDocument();
       expect(screen.getByText('Clinic')).toBeInTheDocument();
@@ -102,19 +103,38 @@ describe('ToolCallInfo', () => {
       expect(screen.queryByText(/min_days_overdue|\{/)).not.toBeInTheDocument();
     });
 
-    it('keeps the raw output collapsed behind Show raw data', () => {
-      render(<ToolCallInfo input={input} output='{"rows": 3}' plain info={info} />);
+    it('keeps a lookup output collapsed behind Show raw data', () => {
+      render(<ToolCallInfo input={input} output='{"rows": 3}' wording="lookup" info={info} />);
       const toggle = screen.getByText('Show raw data').closest('button')!;
       expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      expect(document.getElementById(toggle.getAttribute('aria-controls')!)).not.toBeNull();
       expect(screen.queryByTestId('output-renderer')).not.toBeInTheDocument();
       fireEvent.click(toggle);
       expect(screen.getByTestId('output-renderer').textContent).toBe('{"rows": 3}');
     });
 
-    it('shows an error output directly', () => {
-      render(<ToolCallInfo input={input} output="Error: timed out" plain />);
-      expect(screen.getByTestId('output-renderer').textContent).toBe('Error: timed out');
+    it('shows a send output inline under sent wording', () => {
+      render(<ToolCallInfo input={input} output="Sent" wording="send" info={info} />);
+      expect(screen.getByText('What was sent')).toBeInTheDocument();
+      expect(screen.getByTestId('output-renderer').textContent).toBe('Sent');
       expect(screen.queryByText('Show raw data')).not.toBeInTheDocument();
+    });
+
+    it('uses neutral wording for other tools', () => {
+      render(<ToolCallInfo input={input} output="Done" wording="action" />);
+      expect(screen.getByText('Details')).toBeInTheDocument();
+      expect(screen.getByTestId('output-renderer').textContent).toBe('Done');
+    });
+
+    it('shows a failed lookup output directly', () => {
+      render(<ToolCallInfo input={input} output="Timed out" wording="lookup" failed />);
+      expect(screen.getByTestId('output-renderer').textContent).toBe('Timed out');
+      expect(screen.queryByText('Show raw data')).not.toBeInTheDocument();
+    });
+
+    it('falls back to the raw input when the arguments are not an object', () => {
+      render(<ToolCallInfo input='{"min_days_ove' wording="lookup" />);
+      expect(screen.getByText('{"min_days_ove')).toBeInTheDocument();
     });
   });
 

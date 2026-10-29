@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useId, useState, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { FriendlyToolInfo } from '~/components/Chat/approval/friendly';
 import { buildArgumentRows, isLongValue } from '~/components/Chat/approval/friendly';
 import { useLocalize, useExpandCollapse } from '~/hooks';
-import { OutputRenderer, isError } from './ToolOutput';
+import { OutputRenderer } from './ToolOutput';
 import { hasToolParams } from './params';
 import { cn } from '~/utils';
 
@@ -94,18 +94,33 @@ function InputRenderer({ input }: { input: string }) {
   }
 }
 
-/** `interface.plainToolDetails`: the arguments as labelled rows and the raw output behind a
- *  disclosure, for readers who don't read JSON. A failed call still shows its error. */
+/** How a plain-mode panel names the call: read-only lookups, sends, and anything else. */
+export type ToolCallWording = 'lookup' | 'send' | 'action';
+
+const WORDING_HEADINGS = {
+  lookup: 'com_ui_tool_looked_up',
+  send: 'com_ui_tool_sent',
+  action: 'com_ui_details',
+} as const;
+
+/** `interface.plainToolDetails`: the arguments as labelled rows, for readers who don't read
+ *  JSON. A lookup's raw output sits behind a disclosure; a write's output is its confirmation,
+ *  and a failure is the fact the reader needs, so both stay inline. */
 function PlainToolCallInfo({
   input,
   output,
   info,
+  wording,
+  failed,
 }: {
   input: string;
   output?: string | null;
   info?: FriendlyToolInfo;
+  wording: ToolCallWording;
+  failed: boolean;
 }) {
   const localize = useLocalize();
+  const rawId = useId();
   const [showRaw, setShowRaw] = useState(false);
   const rows = useMemo(
     () =>
@@ -116,14 +131,14 @@ function PlainToolCallInfo({
       }),
     [input, info, localize],
   );
-  const failed = output != null && isError(output);
+  const collapseOutput = wording === 'lookup' && !failed;
 
   return (
     <div className="w-full space-y-2 px-3 py-3.5 text-xs">
       {rows.length > 0 && (
         <div>
           <p className="text-text-secondary mb-1 font-medium">
-            {localize('com_ui_tool_looked_up')}
+            {localize(WORDING_HEADINGS[wording])}
           </p>
           <dl className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1">
             {rows.map((row) => (
@@ -144,8 +159,9 @@ function PlainToolCallInfo({
           </dl>
         </div>
       )}
-      {output && failed && <OutputRenderer text={output} />}
-      {output && !failed && (
+      {rows.length === 0 && <InputRenderer input={input} />}
+      {output && !collapseOutput && <OutputRenderer text={output} />}
+      {output && collapseOutput && (
         <div>
           <button
             type="button"
@@ -155,6 +171,7 @@ function PlainToolCallInfo({
             )}
             onClick={() => setShowRaw((prev) => !prev)}
             aria-expanded={showRaw}
+            aria-controls={rawId}
           >
             <span>{localize('com_ui_tool_show_raw')}</span>
             <ChevronDown
@@ -165,11 +182,9 @@ function PlainToolCallInfo({
               aria-hidden="true"
             />
           </button>
-          {showRaw && (
-            <div className="pt-1">
-              <OutputRenderer text={output} />
-            </div>
-          )}
+          <div id={rawId} className="pt-1" hidden={!showRaw}>
+            {showRaw && <OutputRenderer text={output} />}
+          </div>
         </div>
       )}
     </div>
@@ -179,16 +194,27 @@ function PlainToolCallInfo({
 export default function ToolCallInfo({
   input,
   output,
-  plain = false,
+  wording,
+  failed = false,
   info,
 }: {
   input: string;
   output?: string | null;
-  plain?: boolean;
+  /** Set when `interface.plainToolDetails` is on for an MCP call. */
+  wording?: ToolCallWording;
+  failed?: boolean;
   info?: FriendlyToolInfo;
 }) {
-  if (plain) {
-    return <PlainToolCallInfo input={input} output={output} info={info} />;
+  if (wording != null) {
+    return (
+      <PlainToolCallInfo
+        input={input}
+        output={output}
+        info={info}
+        wording={wording}
+        failed={failed}
+      />
+    );
   }
   return <DefaultToolCallInfo input={input} output={output} />;
 }

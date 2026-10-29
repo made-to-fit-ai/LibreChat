@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { normalizeServerName } from 'librechat-data-provider';
 import type { MCPTool } from 'librechat-data-provider';
+import type { FriendlyToolInfo } from '~/components/Chat/approval/friendly';
+import { indexFriendlyTools } from '~/components/Chat/approval/friendly';
 import { useMCPServersQuery, useMCPToolsQuery } from '~/data-provider';
 import { useCatalogReady } from '../useCatalogWarmup';
 
@@ -64,9 +66,10 @@ export function useMCPReadOnlyTools(): Set<string> {
 }
 
 /** MCP catalog entries keyed by runtime tool name, for labelling a call's arguments. */
-export function useMCPToolInfo(): Map<string, MCPTool> {
-  const tools = useMCPToolCatalog();
-  return useMemo(() => new Map(tools.map((tool) => [tool.pluginKey, tool])), [tools]);
+export function useMCPToolInfo(): Map<string, FriendlyToolInfo> {
+  const mcpServersReady = useCatalogReady('mcpServers');
+  const { data } = useMCPToolsQuery({ enabled: mcpServersReady });
+  return useMemo(() => indexFriendlyTools(data?.servers), [data]);
 }
 
 function useMCPToolCatalog(): MCPTool[] {
