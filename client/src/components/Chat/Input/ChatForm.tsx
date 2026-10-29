@@ -536,8 +536,15 @@ const ChatForm = memo(function ChatForm({
       prompts: hasPromptsAccess && slashCommandEnabled,
       mentions: atCommandEnabled,
       attach: attachTarget.canAttach,
+      specsOnly: startupConfig?.interface?.modelSelect === false,
     }),
-    [hasPromptsAccess, slashCommandEnabled, atCommandEnabled, attachTarget.canAttach],
+    [
+      hasPromptsAccess,
+      slashCommandEnabled,
+      atCommandEnabled,
+      attachTarget.canAttach,
+      startupConfig?.interface?.modelSelect,
+    ],
   );
   const { submitText: submitAnswerText } = answerMode;
   const dictationAnswerModeActive = answerMode.composerAnswers;

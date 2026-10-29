@@ -147,9 +147,16 @@ describe('Mention wording', () => {
   it('uses assistant wording when only assistants are offered (modelSelect: false)', () => {
     mockUseMentions.mockReturnValue({ ...mentionsBundle, specsOnly: true });
     renderMention();
-    expect(screen.getByText('com_ui_mention_assistant')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('com_ui_search_assistants')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('com_ui_search_assistants')).toHaveAccessibleName(
+      'com_ui_mention_assistant',
+    );
     expect(screen.queryByPlaceholderText(PLACEHOLDER)).toBeNull();
+  });
+
+  it('omits the assistant heading when there are no assistants to list', () => {
+    mockUseMentions.mockReturnValue({ ...mentionsBundle, options: [], specsOnly: true });
+    renderMention();
+    expect(screen.queryByText('com_ui_mention_assistant')).toBeNull();
   });
 });
 

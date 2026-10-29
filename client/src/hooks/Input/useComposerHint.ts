@@ -38,8 +38,9 @@ export interface ComposerHintState {
   enterToSend: boolean;
   /** Which idle affordances act right now: `/` opens prompts, `@` opens the
    *  model mention, `+` attaches. The host resolves them from the same settings,
-   *  permissions and attach target the composer obeys. */
-  idleActions: { prompts: boolean; mentions: boolean; attach: boolean };
+   *  permissions and attach target the composer obeys. `specsOnly` names the
+   *  `@` target as assistants when the deployment offers nothing else. */
+  idleActions: { prompts: boolean; mentions: boolean; attach: boolean; specsOnly?: boolean };
 }
 
 /**
@@ -183,10 +184,13 @@ export function composeHint(
     return { text: localize('com_ui_composer_hint_typing'), kind: 'tip' };
   }
 
-  const { prompts, mentions, attach } = state.idleActions;
+  const { prompts, mentions, attach, specsOnly } = state.idleActions;
   const idle = [
     prompts && localize('com_ui_composer_hint_prompts'),
-    mentions && localize('com_ui_composer_hint_mentions'),
+    mentions &&
+      localize(
+        specsOnly ? 'com_ui_composer_hint_mentions_assistants' : 'com_ui_composer_hint_mentions',
+      ),
     attach && localize('com_ui_composer_hint_attach'),
   ].filter((part): part is string => typeof part === 'string');
   return { text: idle.join(SEPARATOR), kind: 'tip' };
