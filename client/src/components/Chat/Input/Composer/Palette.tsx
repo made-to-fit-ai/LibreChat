@@ -177,6 +177,8 @@ interface PaletteProps {
   entries: PaletteEntry[];
   /** The composer box the popover anchors to, so it matches its width. */
   anchorRef: React.RefObject<HTMLElement>;
+  /** Heads the MCP section "Connected systems" for staff who never see the chips. */
+  plainServerLabel?: boolean;
 }
 
 /**
@@ -213,6 +215,7 @@ function Palette({
   canAttach,
   entries,
   anchorRef,
+  plainServerLabel = false,
 }: PaletteProps) {
   const localize = useLocalize();
   /* Ariakit owns the open state rather than a controlled `open`/`setOpen` pair:
@@ -511,7 +514,11 @@ function Palette({
       next.push({
         type: 'header',
         key: `h:${section}`,
-        label: localize(SECTION_LABEL[section]),
+        label: localize(
+          section === 'mcp' && plainServerLabel
+            ? 'com_ui_connected_systems'
+            : SECTION_LABEL[section],
+        ),
         showAll: capped ? section : undefined,
       });
       const shown = capped ? list.slice(0, SECTION_LIMIT) : list;
@@ -548,6 +555,7 @@ function Palette({
     recent.files,
     canAttach,
     localize,
+    plainServerLabel,
   ]);
 
   /** Where every row sits and how tall the list is, in one pass. */

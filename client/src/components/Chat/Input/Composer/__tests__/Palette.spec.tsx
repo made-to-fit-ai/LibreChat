@@ -137,6 +137,7 @@ function renderPalette(
     onCancel?: () => void;
     anchorBottom?: number | (() => number);
     anchor?: HTMLElement;
+    plainServerLabel?: boolean;
   } = {},
 ) {
   const anchorRef = { current: over.anchor ?? document.createElement('div') };
@@ -168,6 +169,7 @@ function renderPalette(
           dictating={over.dictating}
           onCancel={over.onCancel}
           anchorRef={anchorRef as React.RefObject<HTMLElement>}
+          plainServerLabel={over.plainServerLabel}
         />
       </div>
     </RecoilRoot>,
@@ -436,6 +438,12 @@ describe('Palette', () => {
       expect(listed[1]).toBe('Github');
       /* And not left behind in the section it came from. */
       expect(listed.filter((row) => row === 'Github')).toHaveLength(1);
+    });
+
+    it('heads the servers "Connected systems" when asked to', () => {
+      renderPalette({ plainServerLabel: true });
+      expect(headers()).toContain('com_ui_connected_systems');
+      expect(headers()).not.toContain('com_ui_composer_mcp');
     });
 
     it('drops a section whose only member was starred', () => {
