@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import type { MenuItemProps } from '~/common';
 
 const mockAccess: Record<string, boolean> = {};
@@ -39,6 +39,11 @@ jest.mock('~/components/Chat/PullRequest', () => ({
     mockPullRequestArgs.push(conversationId);
     return mockHookState.pullRequest;
   },
+}));
+const mockStartNewChat = jest.fn();
+jest.mock('~/hooks/Conversations/useNewChat', () => ({
+  __esModule: true,
+  default: () => ({ startNewChat: mockStartNewChat }),
 }));
 jest.mock('~/hooks/Conversations/useMultiConvo', () => ({
   __esModule: true,
@@ -81,6 +86,7 @@ jest.mock('@librechat/client', () => ({
     <button {...props}>{children}</button>
   ),
   TooltipAnchor: ({ render: node }: { render: React.ReactNode }) => node,
+  NewChatIcon: () => null,
   DropdownPopup: ({ trigger, items }: { trigger: React.ReactNode; items: MenuItemProps[] }) => (
     <div>
       {trigger}
@@ -92,7 +98,7 @@ jest.mock('@librechat/client', () => ({
               <li key={index} data-kind="separator" />
             ) : (
               <li key={index} data-kind="item" data-sub={item.subItems != null}>
-                {item.label}
+                <button onClick={item.onClick}>{item.label}</button>
               </li>
             ),
           )}
@@ -112,6 +118,7 @@ const labels = () =>
 describe('HeaderMenu', () => {
   beforeEach(() => {
     mockBookmarkArgs.length = 0;
+    mockStartNewChat.mockClear();
     mockPullRequestArgs.length = 0;
     mockHookState.pullRequest = { item: undefined, dialog: null };
     for (const key of Object.keys(mockAccess)) {
@@ -130,6 +137,7 @@ describe('HeaderMenu', () => {
 
     expect(screen.getByTestId('header-overflow-menu')).toBeInTheDocument();
     expect(labels()).toEqual([
+      'com_ui_new_chat',
       'com_ui_bookmarks',
       'com_ui_add_multi_conversation',
       'share',
@@ -147,6 +155,7 @@ describe('HeaderMenu', () => {
     render(<HeaderMenu pullRequestConversationId="convo-1" />);
 
     expect(labels()).toEqual([
+      'com_ui_new_chat',
       'com_ui_bookmarks',
       'com_ui_add_multi_conversation',
       'PR #7',
@@ -180,7 +189,7 @@ describe('HeaderMenu', () => {
 
     render(<HeaderMenu pullRequestConversationId="convo-1" />);
 
-    expect(labels()).toEqual(['PR #7']);
+    expect(labels()).toEqual(['com_ui_new_chat', 'PR #7']);
     expect(rows()[0]).toHaveAttribute('data-kind', 'item');
   });
 
@@ -196,10 +205,10 @@ describe('HeaderMenu', () => {
   it('nests bookmarks rather than flattening every tag into the top level', () => {
     render(<HeaderMenu />);
 
-    expect(rows()[0]).toHaveAttribute('data-sub', 'true');
+    expect(rows()[1]).toHaveAttribute('data-sub', 'true');
   });
 
-  it('renders nothing when no action survives its gate', () => {
+  it('always offers a new chat, even when no other action survives its gate', () => {
     mockHookState.multiConvo.show = false;
     mockHookState.temporary.show = false;
     mockHookState.bookmarks.show = false;
@@ -207,7 +216,16 @@ describe('HeaderMenu', () => {
 
     render(<HeaderMenu />);
 
-    expect(screen.queryByTestId('header-overflow-menu')).not.toBeInTheDocument();
+    expect(screen.getByTestId('header-overflow-menu')).toBeInTheDocument();
+    expect(labels()).toEqual(['com_ui_new_chat']);
+  });
+
+  it('starts a new chat from the menu', () => {
+    render(<HeaderMenu />);
+
+    fireEvent.click(screen.getByText('com_ui_new_chat'));
+
+    expect(mockStartNewChat).toHaveBeenCalledTimes(1);
   });
 
   it('drops actions the user lacks permission for', () => {
@@ -216,7 +234,7 @@ describe('HeaderMenu', () => {
 
     render(<HeaderMenu />);
 
-    expect(labels()).toEqual(['share', 'export', 'com_ui_temporary']);
+    expect(labels()).toEqual(['com_ui_new_chat', 'share', 'export', 'com_ui_temporary']);
   });
 
   it('never opens with a leading divider when earlier groups are gated out', () => {
@@ -256,6 +274,7 @@ describe('HeaderMenu', () => {
     rerender(<HeaderMenu trace={{ show: true, open: jest.fn() }} />);
 
     expect(labels()).toEqual([
+      'com_ui_new_chat',
       'com_ui_bookmarks',
       'com_ui_add_multi_conversation',
       'com_ui_trace_view',
@@ -274,7 +293,7 @@ describe('HeaderMenu', () => {
 
     render(<HeaderMenu trace={{ show: true, open: jest.fn() }} />);
 
-    expect(labels()).toEqual(['com_ui_trace_view']);
+    expect(labels()).toEqual(['com_ui_new_chat', 'com_ui_trace_view']);
     expect(rows()[0]).toHaveAttribute('data-kind', 'item');
   });
 

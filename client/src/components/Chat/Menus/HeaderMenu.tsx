@@ -1,8 +1,8 @@
 import { useState, useId } from 'react';
 import * as Ariakit from '@ariakit/react';
 import { PermissionTypes, Permissions } from 'librechat-data-provider';
-import { DropdownPopup, TooltipAnchor, Button } from '@librechat/client';
 import { BookmarkFilledIcon, BookmarkIcon } from '@radix-ui/react-icons';
+import { DropdownPopup, TooltipAnchor, NewChatIcon, Button } from '@librechat/client';
 import { Ellipsis, PlusCircle, HatGlasses, Check, ChartNoAxesGantt } from 'lucide-react';
 import type { TStartupConfig } from 'librechat-data-provider';
 import type { TraceControl } from '~/components/Chat/Trace';
@@ -13,6 +13,7 @@ import useBookmarkItems from '~/hooks/Sharing/useBookmarkItems';
 import useMultiConvo from '~/hooks/Conversations/useMultiConvo';
 import { BookmarkContext } from '~/Providers/BookmarkContext';
 import useChatOptions from '~/hooks/Sharing/useChatOptions';
+import useNewChat from '~/hooks/Conversations/useNewChat';
 import { useHasAccess, useLocalize } from '~/hooks';
 import { cn } from '~/utils';
 
@@ -56,6 +57,7 @@ export default function HeaderMenu({
   });
 
   const pullRequest = usePullRequestMenu(pullRequestConversationId ?? '');
+  const { startNewChat } = useNewChat();
   const multiConvo = useMultiConvo();
   const temporary = useTemporaryChat();
   const bookmarks = useBookmarkItems({ enabled: hasAccessToBookmarks === true });
@@ -71,7 +73,16 @@ export default function HeaderMenu({
   const showTemporary =
     (hasAccessToTemporaryChat === true || temporary.isEnforced) && temporary.show;
 
-  const items: t.MenuItemProps[] = [];
+  /** Always offered, even on a new chat where the header skips its standalone icon:
+   *  a typed draft or a deep-linked spec is still something to start over from. */
+  const items: t.MenuItemProps[] = [
+    {
+      id: 'header-new-chat',
+      label: localize('com_ui_new_chat'),
+      icon: <NewChatIcon className="size-4" />,
+      onClick: startNewChat,
+    },
+  ];
 
   /** `separate` marks an entry as *being* a divider, so it needs its own slot. */
   const pushGroup = (...group: t.MenuItemProps[]) => {
@@ -136,10 +147,6 @@ export default function HeaderMenu({
       ),
       onClick: temporary.toggle,
     });
-  }
-
-  if (items.length === 0) {
-    return null;
   }
 
   /** Mirrors the desktop share button, which surfaces an active link in its tooltip. */
