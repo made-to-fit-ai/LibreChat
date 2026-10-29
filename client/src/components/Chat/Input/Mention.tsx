@@ -47,6 +47,7 @@ function MentionContent({
     modelsConfig,
     endpointsConfig,
     assistantListMap,
+    specsOnly,
   } = useMentions({ assistantMap: assistantsMap || {}, includeAssistants });
   const { onSelectMention } = useSelectMention({
     presets,
@@ -142,6 +143,7 @@ function MentionContent({
   }, []);
 
   const type = commandChar !== '@' ? 'add-convo' : 'mention';
+  const plainLanguage = specsOnly && type === 'mention';
   useEffect(() => {
     const currentActiveItem = document.getElementById(`${type}-item-${activeIndex}`);
     currentActiveItem?.scrollIntoView({ behavior: 'instant', block: 'nearest' });
@@ -183,9 +185,14 @@ function MentionContent({
   return (
     <div className="absolute bottom-28 z-10 w-full space-y-2">
       <div className="popover border-border-light bg-surface-secondary rounded-theme-popover border p-2 shadow-lg">
+        {plainLanguage && (
+          <div className="text-text-secondary px-2 pt-1 text-xs font-medium">
+            {localize('com_ui_mention_assistant')}
+          </div>
+        )}
         <Input
           ref={initInputRef}
-          placeholder={localize(placeholder)}
+          placeholder={localize(plainLanguage ? 'com_ui_search_assistants' : placeholder)}
           className="bg-surface-secondary mb-1 h-auto w-full rounded-none border-0 p-2"
           autoComplete="off"
           value={searchValue}
