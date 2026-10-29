@@ -6,6 +6,8 @@ jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string) => {
     const translations: Record<string, string> = {
       com_ui_parameters: 'Parameters',
+      com_ui_tool_looked_up: 'What was looked up',
+      com_ui_tool_show_raw: 'Show raw data',
     };
     return translations[key] || key;
   },
@@ -21,6 +23,7 @@ jest.mock('~/hooks', () => ({
 
 jest.mock('../ToolOutput', () => ({
   OutputRenderer: ({ text }: { text: string }) => <div data-testid="output-renderer">{text}</div>,
+  isError: (text: string) => text.startsWith('Error'),
 }));
 
 jest.mock('~/utils', () => ({
@@ -79,6 +82,39 @@ describe('ToolCallInfo', () => {
       expect(button).toHaveAttribute('aria-expanded', 'true');
       fireEvent.click(button);
       expect(button).toHaveAttribute('aria-expanded', 'false');
+    });
+  });
+
+  describe('plain mode', () => {
+    const input = '{"min_days_overdue": 60, "clinic_name": "Richmond"}';
+    const info = {
+      description: '',
+      parameters: { properties: { clinic_name: { title: 'Clinic' } } },
+    };
+
+    it('labels arguments by schema title or humanised key, without the Parameters toggle', () => {
+      render(<ToolCallInfo input={input} output='{"rows": 3}' plain info={info} />);
+      expect(screen.getByText('What was looked up')).toBeInTheDocument();
+      expect(screen.getByText('Min days overdue')).toBeInTheDocument();
+      expect(screen.getByText('Clinic')).toBeInTheDocument();
+      expect(screen.getByText('Richmond')).toBeInTheDocument();
+      expect(screen.queryByText('Parameters')).not.toBeInTheDocument();
+      expect(screen.queryByText(/min_days_overdue|\{/)).not.toBeInTheDocument();
+    });
+
+    it('keeps the raw output collapsed behind Show raw data', () => {
+      render(<ToolCallInfo input={input} output='{"rows": 3}' plain info={info} />);
+      const toggle = screen.getByText('Show raw data').closest('button')!;
+      expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      expect(screen.queryByTestId('output-renderer')).not.toBeInTheDocument();
+      fireEvent.click(toggle);
+      expect(screen.getByTestId('output-renderer').textContent).toBe('{"rows": 3}');
+    });
+
+    it('shows an error output directly', () => {
+      render(<ToolCallInfo input={input} output="Error: timed out" plain />);
+      expect(screen.getByTestId('output-renderer').textContent).toBe('Error: timed out');
+      expect(screen.queryByText('Show raw data')).not.toBeInTheDocument();
     });
   });
 

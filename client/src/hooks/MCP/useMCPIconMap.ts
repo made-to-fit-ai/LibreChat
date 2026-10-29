@@ -63,6 +63,12 @@ export function useMCPReadOnlyTools(): Set<string> {
   );
 }
 
+/** MCP catalog entries keyed by runtime tool name, for labelling a call's arguments. */
+export function useMCPToolInfo(): Map<string, MCPTool> {
+  const tools = useMCPToolCatalog();
+  return useMemo(() => new Map(tools.map((tool) => [tool.pluginKey, tool])), [tools]);
+}
+
 function useMCPToolCatalog(): MCPTool[] {
   const mcpServersReady = useCatalogReady('mcpServers');
   const { data } = useMCPToolsQuery({ enabled: mcpServersReady });

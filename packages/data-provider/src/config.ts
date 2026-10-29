@@ -3100,6 +3100,9 @@ export const interfaceSchema = z
     /** Shows a "Help" button in the chat header that explains each assistant, the
      *  systems it reaches and example questions, for staff new to AI chat. */
     helpGuide: z.boolean().optional(),
+    /** Shows an expanded MCP tool step's arguments as labelled rows, with plain
+     *  wording and its raw output behind a disclosure, for non-technical staff. */
+    plainToolDetails: z.boolean().optional(),
     mcpServers: mcpServersSchema.optional(),
     modelSelect: z.boolean().optional(),
     /** Set to false during a rolling upgrade, until every API replica supports title ownership and old title jobs drain. */
@@ -3419,6 +3422,7 @@ export const interfaceSchema = z
     landingHeading: 'entity',
     landingFooter: true,
     helpGuide: false,
+    plainToolDetails: false,
     remoteAgents: {
       use: false,
       create: false,

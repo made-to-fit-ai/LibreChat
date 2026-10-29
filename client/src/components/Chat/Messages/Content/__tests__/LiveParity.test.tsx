@@ -37,6 +37,7 @@ jest.mock('~/hooks/MCP', () => {
     useMCPServerTitles: () => new Map(),
     useMCPReadOnlyTools: () => new Set(),
     useMCPToolTitles: () => new Map(),
+    useMCPToolInfo: () => new Map(),
   };
 });
 

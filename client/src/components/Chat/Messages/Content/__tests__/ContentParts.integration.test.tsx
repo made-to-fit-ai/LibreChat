@@ -15,6 +15,7 @@ import { Text } from '../Parts';
 /** No previewed subagent run here leaves a file in doubt, so no owner is ever asked for. */
 jest.mock('~/data-provider', () => ({
   useSubagentAttachmentCallsQueries: () => [],
+  useGetStartupConfig: () => ({ data: undefined }),
 }));
 
 jest.mock('~/hooks', () => ({
@@ -47,6 +48,7 @@ jest.mock('~/hooks/MCP', () => {
     useMCPServerTitles: () => new Map(),
     useMCPReadOnlyTools: () => new Set(),
     useMCPToolTitles: () => new Map(),
+    useMCPToolInfo: () => new Map(),
   };
 });
 

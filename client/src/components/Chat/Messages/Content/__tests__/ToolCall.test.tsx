@@ -28,6 +28,7 @@ jest.mock('~/hooks', () => ({
       com_ui_via_server: `via ${values?.[0]}`,
       com_ui_tool_failed: 'failed',
       com_ui_tool_name_set_memory: 'Save Memory',
+      com_ui_tool_lookup_time: 'Lookup',
     };
     return translations[key] || key;
   },
@@ -44,6 +45,13 @@ jest.mock('~/hooks', () => ({
 }));
 
 const mockMCPToolTitles = new Map<string, string>();
+const mockMCPToolInfo = new Map<string, unknown>();
+let mockStartupConfig: TStartupConfig | undefined;
+
+jest.mock('~/data-provider', () => ({
+  ...jest.requireActual('~/data-provider'),
+  useGetStartupConfig: () => ({ data: mockStartupConfig }),
+}));
 
 jest.mock('~/hooks/MCP', () => {
   const mcpServerNames: string[] = [];
@@ -55,6 +63,7 @@ jest.mock('~/hooks/MCP', () => {
     useMCPServerTitles: () => new Map(),
     useMCPReadOnlyTools: () => new Set(),
     useMCPToolTitles: () => mockMCPToolTitles,
+    useMCPToolInfo: () => mockMCPToolInfo,
   };
 });
 
@@ -79,13 +88,15 @@ jest.mock('../ProgressText', () => ({
     inProgressText,
     finishedText,
     subtitle,
+    toolCallTimeLabel,
   }: {
     onClick?: () => void;
     inProgressText?: string;
     finishedText?: string;
     subtitle?: string;
+    toolCallTimeLabel?: string;
   }) => (
-    <div data-testid="progress-text" onClick={onClick}>
+    <div data-testid="progress-text" data-time-label={toolCallTimeLabel} onClick={onClick}>
       {finishedText || inProgressText}
       {subtitle && <span data-testid="subtitle">{subtitle}</span>}
     </div>
@@ -180,6 +191,8 @@ describe('ToolCall', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockStartupConfig = undefined;
+    mockMCPToolInfo.clear();
     process.env.VITE_MCP_SANDBOX_URL = 'http://sandbox.localhost:3081/api/mcp/sandbox';
   });
 
@@ -189,6 +202,40 @@ describe('ToolCall', () => {
     } else {
       process.env.VITE_MCP_SANDBOX_URL = originalSandboxUrl;
     }
+  });
+
+  describe('interface.plainToolDetails', () => {
+    const mcpName = `practice_insights${Constants.mcp_delimiter}clinic`;
+    const schema = { parameters: { properties: { min_days_overdue: { title: 'Days overdue' } } } };
+
+    const expand = (props: Partial<React.ComponentProps<typeof ToolCall>> = {}) => {
+      mockMCPToolInfo.set(mcpName, schema);
+      renderWithRecoil(<ToolCall {...mockProps} {...props} />);
+      fireEvent.click(screen.getByTestId('progress-text'));
+      return JSON.parse(screen.getByTestId('tool-call-info').textContent!);
+    };
+
+    it('passes plain mode, the tool schema and a plain time label for an MCP call when on', () => {
+      mockStartupConfig = { interface: { plainToolDetails: true } } as TStartupConfig;
+      const props = expand({ name: mcpName });
+      expect(props).toMatchObject({ plain: true, info: schema });
+      expect(screen.getByTestId('progress-text')).toHaveAttribute('data-time-label', 'Lookup');
+    });
+
+    it('leaves non-MCP tools unchanged when on', () => {
+      mockStartupConfig = { interface: { plainToolDetails: true } } as TStartupConfig;
+      expect(expand()).toEqual({ input: '{"test": "input"}', output: 'Test output', plain: false });
+      expect(screen.getByTestId('progress-text')).not.toHaveAttribute('data-time-label');
+    });
+
+    it('leaves MCP tools unchanged when off', () => {
+      expect(expand({ name: mcpName })).toEqual({
+        input: '{"test": "input"}',
+        output: 'Test output',
+        plain: false,
+      });
+      expect(screen.getByTestId('progress-text')).not.toHaveAttribute('data-time-label');
+    });
   });
 
   describe('tool preparation feedback', () => {

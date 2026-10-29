@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
 import { ChevronDown } from 'lucide-react';
+import type { FriendlyToolInfo } from '~/components/Chat/approval/friendly';
+import { buildArgumentRows, isLongValue } from '~/components/Chat/approval/friendly';
 import { useLocalize, useExpandCollapse } from '~/hooks';
-import { OutputRenderer } from './ToolOutput';
+import { OutputRenderer, isError } from './ToolOutput';
 import { hasToolParams } from './params';
 import { cn } from '~/utils';
 
@@ -92,7 +94,106 @@ function InputRenderer({ input }: { input: string }) {
   }
 }
 
-export default function ToolCallInfo({ input, output }: { input: string; output?: string | null }) {
+/** `interface.plainToolDetails`: the arguments as labelled rows and the raw output behind a
+ *  disclosure, for readers who don't read JSON. A failed call still shows its error. */
+function PlainToolCallInfo({
+  input,
+  output,
+  info,
+}: {
+  input: string;
+  output?: string | null;
+  info?: FriendlyToolInfo;
+}) {
+  const localize = useLocalize();
+  const [showRaw, setShowRaw] = useState(false);
+  const rows = useMemo(
+    () =>
+      buildArgumentRows(input, info, {
+        yes: localize('com_ui_yes'),
+        no: localize('com_ui_no'),
+        none: localize('com_ui_approval_value_none'),
+      }),
+    [input, info, localize],
+  );
+  const failed = output != null && isError(output);
+
+  return (
+    <div className="w-full space-y-2 px-3 py-3.5 text-xs">
+      {rows.length > 0 && (
+        <div>
+          <p className="text-text-secondary mb-1 font-medium">
+            {localize('com_ui_tool_looked_up')}
+          </p>
+          <dl className="grid grid-cols-[minmax(0,10rem)_minmax(0,1fr)] items-baseline gap-x-4 gap-y-1">
+            {rows.map((row) => (
+              <div key={row.key} className="contents">
+                <dt className="text-text-secondary-alt">{row.label}</dt>
+                <dd
+                  className={cn(
+                    'text-text-primary [overflow-wrap:anywhere]',
+                    isLongValue(row) && 'whitespace-pre-wrap',
+                    row.kind === 'code' && 'font-mono',
+                    row.kind === 'empty' && 'text-text-secondary-alt italic',
+                  )}
+                >
+                  {row.value}
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </div>
+      )}
+      {output && failed && <OutputRenderer text={output} />}
+      {output && !failed && (
+        <div>
+          <button
+            type="button"
+            className={cn(
+              'text-text-secondary inline-flex items-center gap-1',
+              'focus-visible:ring-focus-subtle focus-visible:ring-2 focus-visible:outline-hidden',
+            )}
+            onClick={() => setShowRaw((prev) => !prev)}
+            aria-expanded={showRaw}
+          >
+            <span>{localize('com_ui_tool_show_raw')}</span>
+            <ChevronDown
+              className={cn(
+                'size-3 shrink-0 transition-transform duration-200 ease-out',
+                showRaw && 'rotate-180',
+              )}
+              aria-hidden="true"
+            />
+          </button>
+          {showRaw && (
+            <div className="pt-1">
+              <OutputRenderer text={output} />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ToolCallInfo({
+  input,
+  output,
+  plain = false,
+  info,
+}: {
+  input: string;
+  output?: string | null;
+  plain?: boolean;
+  info?: FriendlyToolInfo;
+}) {
+  if (plain) {
+    return <PlainToolCallInfo input={input} output={output} info={info} />;
+  }
+  return <DefaultToolCallInfo input={input} output={output} />;
+}
+
+function DefaultToolCallInfo({ input, output }: { input: string; output?: string | null }) {
   const localize = useLocalize();
   const [showParams, setShowParams] = useState(false);
   const { style: paramsExpandStyle, ref: paramsExpandRef } = useExpandCollapse(showParams);

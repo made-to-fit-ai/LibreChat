@@ -20,6 +20,7 @@ import {
   useMCPServerNames,
   useMCPServerTitles,
   useMCPToolTitles,
+  useMCPToolInfo,
 } from '~/hooks/MCP';
 import { useLocalize, useProgress, useExpandCollapse, useLazyCollapseBody } from '~/hooks';
 import { ToolIcon, getToolIconType, isError, hasRenderableOutput } from './ToolOutput';
@@ -27,6 +28,7 @@ import { cn, getToolDisplayLabel, logger, openInNewTab } from '~/utils';
 import { isToolCallPreparing, useToolPreparation } from './preparation';
 import { resolveToolCallPhase } from '~/utils/toolCallPhase';
 import { MCPAppViews } from '~/components/MCPUIResource';
+import { useGetStartupConfig } from '~/data-provider';
 import { useToolCallIntent } from './Parts/intent';
 import { AttachmentGroup } from './Parts';
 import ToolCallInfo from './ToolCallInfo';
@@ -94,6 +96,8 @@ export default function ToolCall({
   const mcpServerNames = useMCPServerNames();
   const mcpServerTitles = useMCPServerTitles();
   const mcpToolTitles = useMCPToolTitles();
+  const mcpToolInfo = useMCPToolInfo();
+  const { data: startupConfig } = useGetStartupConfig();
   const { function_name, domain, isMCPToolCall, mcpServerName } = useMemo(() => {
     if (typeof name !== 'string') {
       return { function_name: '', domain: null, isMCPToolCall: false, mcpServerName: '' };
@@ -145,6 +149,7 @@ export default function ToolCall({
         : getToolDisplayLabel(function_name, localize, mcpServerNames),
     [name, function_name, isMCPToolCall, localize, mcpServerNames, mcpToolTitles],
   );
+  const plain = isMCPToolCall && startupConfig?.interface?.plainToolDetails === true;
   const mcpIconMap = useMCPIconMap();
   const mcpIconUrl = isMCPToolCall ? mcpIconMap.get(mcpServerName) : undefined;
 
@@ -476,6 +481,7 @@ export default function ToolCall({
             durationMs={runStepDurationMs}
             toolPreparationDurationMs={toolPreparationDurationMs}
             toolExecutionDurationMs={toolExecutionDurationMs}
+            toolCallTimeLabel={plain ? localize('com_ui_tool_lookup_time') : undefined}
             phaseStartAt={toolDispatchedAt ?? toolPreparationStartedAt}
             icon={
               <ToolIcon
@@ -502,7 +508,12 @@ export default function ToolCall({
                 'border-border-light bg-surface-secondary overflow-hidden rounded-lg border',
               )}
             >
-              <ToolCallInfo input={args ?? ''} output={output} />
+              <ToolCallInfo
+                input={args ?? ''}
+                output={output}
+                plain={plain}
+                info={plain ? mcpToolInfo.get(name) : undefined}
+              />
             </div>
           )}
         </div>

@@ -95,6 +95,7 @@ export async function loadDefaultInterface({
     landingHeading: interfaceConfig?.landingHeading ?? defaults.landingHeading,
     landingFooter: interfaceConfig?.landingFooter ?? defaults.landingFooter,
     helpGuide: interfaceConfig?.helpGuide ?? defaults.helpGuide,
+    plainToolDetails: interfaceConfig?.plainToolDetails ?? defaults.plainToolDetails,
     autoSubmitFromUrl: interfaceConfig?.autoSubmitFromUrl ?? defaults.autoSubmitFromUrl,
     colorModeFromUrl: interfaceConfig?.colorModeFromUrl ?? defaults.colorModeFromUrl,
     buildInfo: interfaceConfig?.buildInfo ?? defaults.buildInfo,

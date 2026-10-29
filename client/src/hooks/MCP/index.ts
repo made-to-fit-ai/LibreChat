@@ -10,6 +10,7 @@ export {
   useMCPServerNames,
   useMCPServerTitles,
   useMCPToolTitles,
+  useMCPToolInfo,
   useMCPReadOnlyTools,
 } from './useMCPIconMap';
 export { useRemoveMCPTool } from './useRemoveMCPTool';
