@@ -1,7 +1,7 @@
-import { useMemo, useCallback, useState, useEffect, useRef, useId } from 'react';
+import { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import { HatGlasses } from 'lucide-react';
 import { easings } from '@react-spring/web';
-import { EModelEndpoint, normalizeServerName } from 'librechat-data-provider';
+import { EModelEndpoint } from 'librechat-data-provider';
 import { BirthdayIcon, TooltipAnchor, SplitText, useRemScale } from '@librechat/client';
 import { useChatContext, useAgentsMapContext, useAssistantsMapContext } from '~/Providers';
 import Description, { isHtmlDescription } from '~/components/ui/Description';
@@ -9,7 +9,6 @@ import { useGetEndpointsQuery, useGetStartupConfig } from '~/data-provider';
 import { getIconEndpoint, getEntity, getModelSpec } from '~/utils';
 import { useLocalize, useAuthContext, useGreeting } from '~/hooks';
 import { useChatSettings } from '~/Providers/ChatSettingsContext';
-import { useMCPIconMap, useMCPServerTitles } from '~/hooks/MCP';
 import AgentContact from '~/components/Agents/AgentContact';
 import ConvoIcon from '~/components/Endpoints/ConvoIcon';
 
@@ -76,20 +75,6 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
   const modelSpec = useMemo(
     () => getModelSpec({ specName: conversation?.spec, startupConfig }),
     [conversation?.spec, startupConfig],
-  );
-
-  const mcpIconMap = useMCPIconMap();
-  const connectedLabelId = useId();
-  const mcpServerTitles = useMCPServerTitles();
-  /** The systems this assistant can read, named the way the deployment titles them. Shown only
-   *  when the spec hides the composer's server chips, which otherwise already name them. */
-  const connectedSystems = useMemo(
-    () =>
-      (modelSpec?.hideBadgeRow === true ? (modelSpec.mcpServers ?? []) : []).map((server) => {
-        const key = normalizeServerName(server);
-        return { key, title: mcpServerTitles.get(key) ?? server, icon: mcpIconMap.get(key) };
-      }),
-    [modelSpec?.hideBadgeRow, modelSpec?.mcpServers, mcpServerTitles, mcpIconMap],
   );
 
   const brandedSpecLabel = modelSpec?.showOnLanding ? modelSpec.label : '';
@@ -230,22 +215,6 @@ export default function Landing({ centerFormOnLanding }: { centerFormOnLanding: 
               : `animate-fadeIn mt-4 max-w-md text-center text-sm font-normal ${isTemporary ? 'text-text-secondary' : 'text-text-primary'}`
           }
         />
-        {connectedSystems.length > 0 && !isTemporary && (
-          <div className="animate-fadeIn text-text-secondary mt-3 flex max-w-xl flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
-            <span id={connectedLabelId}>{localize('com_ui_connected_to')}</span>
-            <ul
-              aria-labelledby={connectedLabelId}
-              className="flex flex-wrap items-center justify-center gap-x-3 gap-y-1"
-            >
-              {connectedSystems.map(({ key, title, icon }) => (
-                <li key={key} className="inline-flex items-center gap-1">
-                  {icon && <img src={icon} alt="" className="size-3.5 rounded-sm" />}
-                  {title}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
         {selectedAgent && !isTemporary && (
           <AgentContact
             agent={selectedAgent}
