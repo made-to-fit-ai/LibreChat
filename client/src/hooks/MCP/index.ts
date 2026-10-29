@@ -5,5 +5,10 @@ export * from './useVisibleTools';
 export * from './useMCPServerManager';
 export * from './useMCPConnectionStatus';
 
-export { useMCPIconMap, useMCPServerNames, useMCPServerTitles } from './useMCPIconMap';
+export {
+  useMCPIconMap,
+  useMCPServerNames,
+  useMCPServerTitles,
+  useMCPToolTitles,
+} from './useMCPIconMap';
 export { useRemoveMCPTool } from './useRemoveMCPTool';

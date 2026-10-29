@@ -24,6 +24,9 @@ jest.mock('~/hooks', () => ({
     if (key === 'com_ui_running_n_actions') {
       return `Running ${values?.[0]} actions`;
     }
+    if (key === 'com_ui_checked_var') {
+      return `Checked ${values?.[0]}`;
+    }
     if (key === 'com_ui_n_searches') {
       return `${values?.[0]} searches`;
     }
@@ -907,7 +910,9 @@ describe('ToolCallGroup image hoisting', () => {
       lastContentIdx: 0,
     });
 
-    expect(screen.getByRole('button', { name: /^Google_mcp_Workspace$/ })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /^Checked Google_mcp_Workspace$/ }),
+    ).toBeInTheDocument();
   });
 
   it('labels an MCP tool with its server title when one is configured', () => {
@@ -921,7 +926,7 @@ describe('ToolCallGroup image hoisting', () => {
       lastContentIdx: 0,
     });
 
-    expect(screen.getByRole('button', { name: /^Practice insights$/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Checked Practice insights$/ })).toBeInTheDocument();
   });
 
   it('summarizes repeated completed web searches as an outcome and count', () => {

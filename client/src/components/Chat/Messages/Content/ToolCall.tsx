@@ -15,9 +15,14 @@ import {
   LoneGroupContext,
   SoleToolContext,
 } from './disclosure';
+import {
+  useMCPIconMap,
+  useMCPServerNames,
+  useMCPServerTitles,
+  useMCPToolTitles,
+} from '~/hooks/MCP';
 import { useLocalize, useProgress, useExpandCollapse, useLazyCollapseBody } from '~/hooks';
 import { ToolIcon, getToolIconType, isError, hasRenderableOutput } from './ToolOutput';
-import { useMCPIconMap, useMCPServerNames, useMCPServerTitles } from '~/hooks/MCP';
 import { cn, getToolDisplayLabel, logger, openInNewTab } from '~/utils';
 import { isToolCallPreparing, useToolPreparation } from './preparation';
 import { resolveToolCallPhase } from '~/utils/toolCallPhase';
@@ -88,6 +93,7 @@ export default function ToolCall({
 
   const mcpServerNames = useMCPServerNames();
   const mcpServerTitles = useMCPServerTitles();
+  const mcpToolTitles = useMCPToolTitles();
   const { function_name, domain, isMCPToolCall, mcpServerName } = useMemo(() => {
     if (typeof name !== 'string') {
       return { function_name: '', domain: null, isMCPToolCall: false, mcpServerName: '' };
@@ -134,8 +140,10 @@ export default function ToolCall({
        *  above, so re-parsing it would classify an MCP function that happens to
        *  share a built-in's name (`read_file`, `set_memory`) as that native
        *  tool and show, and announce, an unrelated label. */
-      isMCPToolCall ? function_name : getToolDisplayLabel(function_name, localize, mcpServerNames),
-    [function_name, isMCPToolCall, localize, mcpServerNames],
+      isMCPToolCall
+        ? (mcpToolTitles.get(name) ?? function_name)
+        : getToolDisplayLabel(function_name, localize, mcpServerNames),
+    [name, function_name, isMCPToolCall, localize, mcpServerNames, mcpToolTitles],
   );
   const mcpIconMap = useMCPIconMap();
   const mcpIconUrl = isMCPToolCall ? mcpIconMap.get(mcpServerName) : undefined;
@@ -402,6 +410,10 @@ export default function ToolCall({
       return intent;
     }
     if (isMCPToolCall === true) {
+      /** A server-provided title already reads as the finished step ("Read overdue invoices"). */
+      if (mcpToolTitles.has(name)) {
+        return displayFunctionName;
+      }
       return localize('com_assistants_completed_function', { 0: displayFunctionName });
     }
     if (domain != null && domain && domain.length !== Constants.ENCODED_DOMAIN_LENGTH) {

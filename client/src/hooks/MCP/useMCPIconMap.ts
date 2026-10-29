@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { normalizeServerName } from 'librechat-data-provider';
+import { useMCPServersQuery, useMCPToolsQuery } from '~/data-provider';
 import { useCatalogReady } from '../useCatalogWarmup';
-import { useMCPServersQuery } from '~/data-provider';
 
 /** These observers mount from rendered messages, so they must not pull the
  * server catalog onto the first-render path ahead of the warmup schedule. */
@@ -33,6 +33,24 @@ export function useMCPServerNames(): string[] {
   const mcpServersReady = useCatalogReady('mcpServers');
   const { data: servers } = useMCPServersQuery({ enabled: mcpServersReady });
   return useMemo(() => (servers ? Object.keys(servers).map(normalizeServerName) : []), [servers]);
+}
+
+/** MCP tool titles keyed by runtime tool name (`<tool>_mcp_<server>`), for tool-call labels. */
+export function useMCPToolTitles(): Map<string, string> {
+  const mcpServersReady = useCatalogReady('mcpServers');
+  const { data } = useMCPToolsQuery({ enabled: mcpServersReady });
+  return useMemo(() => {
+    const map = new Map<string, string>();
+    for (const server of Object.values(data?.servers ?? {})) {
+      for (const tool of server.tools ?? []) {
+        const title = (tool.title ?? tool.annotations?.title)?.trim();
+        if (title) {
+          map.set(tool.pluginKey, title);
+        }
+      }
+    }
+    return map;
+  }, [data]);
 }
 
 /** Configured server titles keyed by the normalized server name, for tool-call labels. */

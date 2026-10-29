@@ -35,6 +35,7 @@ jest.mock('~/hooks/MCP', () => {
     useMCPIconMap: () => new Map(),
     useMCPServerNames: () => mcpServerNames,
     useMCPServerTitles: () => new Map(),
+    useMCPToolTitles: () => new Map(),
   };
 });
 

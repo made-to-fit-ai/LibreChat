@@ -43,6 +43,8 @@ jest.mock('~/hooks', () => ({
   useLazyCollapseBody: jest.requireActual('~/hooks/Messages/useLazyCollapseBody').default,
 }));
 
+const mockMCPToolTitles = new Map<string, string>();
+
 jest.mock('~/hooks/MCP', () => {
   const mcpServerNames: string[] = [];
   return {
@@ -51,6 +53,7 @@ jest.mock('~/hooks/MCP', () => {
     useMCPAppFrame: jest.requireActual('~/hooks/MCP/useMCPAppFrame').useMCPAppFrame,
     useMCPServerNames: () => mcpServerNames,
     useMCPServerTitles: () => new Map(),
+    useMCPToolTitles: () => mockMCPToolTitles,
   };
 });
 
@@ -947,6 +950,40 @@ describe('ToolCall', () => {
         />,
       );
       expect(screen.queryByTestId('subtitle')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('MCP tool titles', () => {
+    afterEach(() => mockMCPToolTitles.clear());
+
+    it('labels a finished MCP call by the tool title the server provides', () => {
+      mockMCPToolTitles.set('read_overdue_invoices_mcp_xero', 'Read overdue invoices');
+      renderWithRecoil(
+        <ToolCall
+          {...mockProps}
+          name="read_overdue_invoices_mcp_xero"
+          output="[]"
+          initialProgress={1}
+          isSubmitting={false}
+        />,
+      );
+      expect(screen.getByTestId('progress-text')).toHaveTextContent('Read overdue invoices');
+      expect(screen.queryByText(/read_overdue_invoices/)).not.toBeInTheDocument();
+    });
+
+    it('falls back to the function name when the server gives no title', () => {
+      renderWithRecoil(
+        <ToolCall
+          {...mockProps}
+          name="read_overdue_invoices_mcp_xero"
+          output="[]"
+          initialProgress={1}
+          isSubmitting={false}
+        />,
+      );
+      expect(screen.getByTestId('progress-text')).toHaveTextContent(
+        'Completed read_overdue_invoices',
+      );
     });
   });
 

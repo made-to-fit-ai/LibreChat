@@ -315,6 +315,10 @@ export default function ToolCallGroup({
   const singleToolIsCode =
     toolMetadata[0]?.name != null &&
     parseToolName(toolMetadata[0].name, mcpServerNames).friendlyKey === 'com_ui_tool_name_code';
+  /** A lone MCP call says which system was checked rather than naming the server alone. */
+  const singleToolIsMCP =
+    toolMetadata[0]?.name != null &&
+    parseToolName(toolMetadata[0].name, mcpServerNames).mcpServer !== '';
   const singleToolLabel = useMemo(() => {
     const raw = getToolDisplayLabel(
       toolMetadata[0]?.name ?? '',
@@ -551,6 +555,11 @@ export default function ToolCallGroup({
         return only?.hasOutput
           ? localize('com_assistants_completed_function', { 0: singleToolLabel })
           : singleToolLabel;
+      }
+      if (singleToolIsMCP && singleToolLabel && !toolMetadata[0]?.failed) {
+        return localize(groupDone ? 'com_ui_checked_var' : 'com_ui_checking_var', {
+          0: singleToolLabel,
+        });
       }
       return singleToolLabel || localize('com_ui_used_one_tool');
     }
