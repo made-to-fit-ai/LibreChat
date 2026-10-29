@@ -1,5 +1,4 @@
 import { useMemo, useCallback, useId } from 'react';
-import { MessageSquareText } from 'lucide-react';
 import { EModelEndpoint, Constants } from 'librechat-data-provider';
 import {
   useGetAssistantDocsQuery,
@@ -76,7 +75,7 @@ const ConversationStarters = () => {
 
   return (
     <section aria-labelledby={headingId} className="mt-2 mb-8 w-full px-4">
-      <h2 id={headingId} className="text-text-secondary mb-3 text-center text-sm font-medium">
+      <h2 id={headingId} className="text-text-secondary mb-2 text-center text-xs font-medium">
         {localize('com_ui_try_asking')}
       </h2>
       <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2">
@@ -88,13 +87,9 @@ const ConversationStarters = () => {
               type="button"
               onClick={() => sendConversationStarter(text)}
               style={{ animationDelay: `${index * 75}ms`, animationFillMode: 'backwards' }}
-              className="border-border-medium bg-surface-primary text-text-primary fade-in hover:bg-surface-hover hover:border-border-heavy focus-visible:ring-text-primary flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-start text-sm shadow-xs transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-hidden [&:nth-child(n+3)]:max-sm:hidden"
+              className="border-border-light text-text-secondary fade-in hover:bg-surface-hover hover:text-text-primary focus-visible:ring-text-primary cursor-pointer rounded-xl border px-3.5 py-2.5 text-start text-sm transition-colors duration-200 focus-visible:ring-2 focus-visible:outline-hidden [&:nth-child(n+3)]:max-sm:hidden"
             >
-              <MessageSquareText
-                className="text-text-secondary mt-0.5 size-4 shrink-0"
-                aria-hidden="true"
-              />
-              <span className="line-clamp-3 break-words">{text}</span>
+              <span className="line-clamp-2 break-words">{text}</span>
             </button>
           ))}
       </div>
