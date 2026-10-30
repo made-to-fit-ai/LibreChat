@@ -34,3 +34,19 @@ export function useMCPServerNames(): string[] {
   const { data: servers } = useMCPServersQuery({ enabled: mcpServersReady });
   return useMemo(() => (servers ? Object.keys(servers).map(normalizeServerName) : []), [servers]);
 }
+
+/** Configured server titles keyed by the normalized server name, for tool-call labels. */
+export function useMCPServerTitles(): Map<string, string> {
+  const mcpServersReady = useCatalogReady('mcpServers');
+  const { data: servers } = useMCPServersQuery({ enabled: mcpServersReady });
+  return useMemo(() => {
+    const map = new Map<string, string>();
+    for (const [serverName, config] of Object.entries(servers ?? {})) {
+      const title = config.title?.trim();
+      if (title) {
+        map.set(normalizeServerName(serverName), title);
+      }
+    }
+    return map;
+  }, [servers]);
+}

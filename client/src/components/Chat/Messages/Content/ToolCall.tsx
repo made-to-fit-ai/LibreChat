@@ -17,9 +17,9 @@ import {
 } from './disclosure';
 import { useLocalize, useProgress, useExpandCollapse, useLazyCollapseBody } from '~/hooks';
 import { ToolIcon, getToolIconType, isError, hasRenderableOutput } from './ToolOutput';
+import { useMCPIconMap, useMCPServerNames, useMCPServerTitles } from '~/hooks/MCP';
 import { cn, getToolDisplayLabel, logger, openInNewTab } from '~/utils';
 import { isToolCallPreparing, useToolPreparation } from './preparation';
-import { useMCPIconMap, useMCPServerNames } from '~/hooks/MCP';
 import { resolveToolCallPhase } from '~/utils/toolCallPhase';
 import { MCPAppViews } from '~/components/MCPUIResource';
 import { useToolCallIntent } from './Parts/intent';
@@ -87,6 +87,7 @@ export default function ToolCall({
   }, [auth]);
 
   const mcpServerNames = useMCPServerNames();
+  const mcpServerTitles = useMCPServerTitles();
   const { function_name, domain, isMCPToolCall, mcpServerName } = useMemo(() => {
     if (typeof name !== 'string') {
       return { function_name: '', domain: null, isMCPToolCall: false, mcpServerName: '' };
@@ -337,13 +338,15 @@ export default function ToolCall({
       return errorLine;
     }
     if (isMCPToolCall && mcpServerName) {
-      return localize('com_ui_via_server', { 0: mcpServerName });
+      return localize('com_ui_via_server', {
+        0: mcpServerTitles.get(mcpServerName) ?? mcpServerName,
+      });
     }
     if (domain && domain.length !== Constants.ENCODED_DOMAIN_LENGTH) {
       return localize('com_ui_via_server', { 0: domain });
     }
     return undefined;
-  }, [phase, output, isMCPToolCall, mcpServerName, domain, localize]);
+  }, [phase, output, isMCPToolCall, mcpServerName, mcpServerTitles, domain, localize]);
 
   /** Model-authored live label, streamed as the first args key (injected by
    *  the `tool_intents` capability); persists as the settled label —

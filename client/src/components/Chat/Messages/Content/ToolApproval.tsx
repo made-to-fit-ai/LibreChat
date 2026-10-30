@@ -99,12 +99,22 @@ export default function ToolApproval({
   toolCallId,
   args,
   surface = 'thread',
+  friendly = false,
+  submitOnDecision = false,
+  approveLabel,
 }: {
   approval: NonNullable<Agents.ToolCall['approval']>;
   toolCallId: string;
   args: string | Record<string, unknown> | undefined;
   /** The composer panel owns one batch submit; thread cards keep the lead button. */
   surface?: 'thread' | 'composer';
+  /** Plain-language labels for non-technical reviewers; edit and respond are demoted. */
+  friendly?: boolean;
+  /** Approve and Don't approve record the decision and submit in one click. The
+   *  caller sets this only when this card is the whole batch. */
+  submitOnDecision?: boolean;
+  /** Overrides the approve button's label, e.g. "Approve and send". */
+  approveLabel?: string;
 }) {
   const localize = useLocalize();
   const invalidJsonId = useId();
@@ -358,9 +368,161 @@ export default function ToolApproval({
     );
   }
 
+  /** Records the decision synchronously so the submit right after it sees a ready batch. */
+  const decideAndSubmit = (resolution: Agents.ToolApprovalResolution) => {
+    updateDecisionDraft({
+      active: resolution.decision,
+      allowAlways: resolution.decision === 'approve' && resolution.scope === 'session',
+    });
+    setDecision(actionId, toolCallId, resolution);
+    submitToolApproval(actionId);
+  };
+  const composingReply = active === 'edit' || active === 'respond';
+  const submitting = status === 'submitting';
+
+  const oneClickRow = (
+    <div className="flex flex-wrap items-center gap-2">
+      {allowedDecisions
+        .filter((decision) => decision === 'edit' || decision === 'respond')
+        .map((decision) => {
+          const Icon = DECISION_ICON[decision];
+          const pressed = active === decision;
+          return (
+            <Button
+              key={decision}
+              size="sm"
+              variant="quiet"
+              disabled={locked}
+              aria-pressed={pressed}
+              onClick={() => updateDecisionDraft({ active: pressed ? null : decision })}
+            >
+              <Icon className="h-4 w-4" aria-hidden="true" />
+              {localize(DECISION_LABEL[decision])}
+            </Button>
+          );
+        })}
+      {canAllowAlways && (
+        <Button
+          size="sm"
+          variant="quiet"
+          disabled={locked}
+          aria-describedby={allowAlwaysHintId}
+          onClick={() =>
+            decideAndSubmit({ tool_call_id: toolCallId, decision: 'approve', scope: 'session' })
+          }
+        >
+          <CheckCheck className="h-4 w-4" aria-hidden="true" />
+          {localize('com_ui_approve_always')}
+        </Button>
+      )}
+      <div className="ms-auto flex items-center gap-2">
+        {composingReply ? (
+          <>
+            <Button
+              size="sm"
+              variant="quiet"
+              disabled={locked}
+              onClick={() => updateDecisionDraft({ active: null })}
+            >
+              {localize('com_ui_cancel')}
+            </Button>
+            <Button
+              size="sm"
+              variant="submit"
+              disabled={!ready || locked}
+              onClick={() => submitToolApproval(actionId)}
+            >
+              {localize(submitting ? 'com_ui_submitting' : 'com_ui_continue')}
+            </Button>
+          </>
+        ) : (
+          <>
+            {allowedDecisions.includes('reject') && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={locked}
+                onClick={() => decideAndSubmit({ tool_call_id: toolCallId, decision: 'reject' })}
+              >
+                {localize('com_ui_dont_approve')}
+              </Button>
+            )}
+            {allowedDecisions.includes('approve') && (
+              <Button
+                size="sm"
+                variant="submit"
+                disabled={locked}
+                onClick={() => decideAndSubmit({ tool_call_id: toolCallId, decision: 'approve' })}
+              >
+                {submitting && active === 'approve'
+                  ? localize('com_ui_submitting')
+                  : (approveLabel ?? localize('com_ui_approve'))}
+              </Button>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+
+  const toggleRow = (
+    <div className="flex flex-wrap gap-2">
+      {allowedDecisions.map((decision) => {
+        const Icon = DECISION_ICON[decision];
+        const pressed = active === decision && (decision !== 'approve' || !allowAlways);
+        const demoted = friendly && (decision === 'edit' || decision === 'respond');
+        const label =
+          friendly && decision === 'reject' ? 'com_ui_dont_approve' : DECISION_LABEL[decision];
+        let variant: 'default' | 'outline' | 'quiet' = demoted ? 'quiet' : 'outline';
+        if (pressed) {
+          variant = 'default';
+        }
+        return (
+          <Button
+            key={decision}
+            size="sm"
+            variant={variant}
+            disabled={locked}
+            aria-pressed={pressed}
+            onClick={() =>
+              updateDecisionDraft({ active: pressed ? null : decision, allowAlways: false })
+            }
+            className="inline-flex items-center gap-1.5"
+          >
+            <Icon className="h-4 w-4" aria-hidden="true" />
+            {localize(label)}
+          </Button>
+        );
+      })}
+      {canAllowAlways && (
+        <Button
+          size="sm"
+          variant={allowAlways ? 'default' : 'outline'}
+          disabled={locked}
+          aria-pressed={allowAlways}
+          aria-describedby={allowAlwaysHintId}
+          onClick={() =>
+            updateDecisionDraft({
+              active: allowAlways ? null : 'approve',
+              allowAlways: !allowAlways,
+            })
+          }
+        >
+          <CheckCheck className="h-4 w-4" aria-hidden="true" />
+          {localize('com_ui_approve_always')}
+        </Button>
+      )}
+    </div>
+  );
+
   return (
     <div
-      className="border-border-light bg-surface-secondary my-2 flex w-full flex-col gap-2 rounded-lg border p-3"
+      className={cn(
+        'border-border-light flex w-full flex-col',
+        friendly
+          ? 'mt-4 gap-3 border-t pt-4'
+          : 'bg-surface-secondary my-2 gap-2 rounded-lg border p-3',
+      )}
       data-testid="tool-approval"
       data-tool-call-id={toolCallId}
     >
@@ -379,46 +541,7 @@ export default function ToolApproval({
           )}
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
-        {allowedDecisions.map((decision) => {
-          const Icon = DECISION_ICON[decision];
-          const pressed = active === decision && (decision !== 'approve' || !allowAlways);
-          return (
-            <Button
-              key={decision}
-              size="sm"
-              variant={pressed ? 'default' : 'outline'}
-              disabled={locked}
-              aria-pressed={pressed}
-              onClick={() =>
-                updateDecisionDraft({ active: pressed ? null : decision, allowAlways: false })
-              }
-              className="inline-flex items-center gap-1.5"
-            >
-              <Icon className="h-4 w-4" aria-hidden="true" />
-              {localize(DECISION_LABEL[decision])}
-            </Button>
-          );
-        })}
-        {canAllowAlways && (
-          <Button
-            size="sm"
-            variant={allowAlways ? 'default' : 'outline'}
-            disabled={locked}
-            aria-pressed={allowAlways}
-            aria-describedby={allowAlwaysHintId}
-            onClick={() =>
-              updateDecisionDraft({
-                active: allowAlways ? null : 'approve',
-                allowAlways: !allowAlways,
-              })
-            }
-          >
-            <CheckCheck className="h-4 w-4" aria-hidden="true" />
-            {localize('com_ui_approve_always')}
-          </Button>
-        )}
-      </div>
+      {submitOnDecision ? oneClickRow : toggleRow}
       {canAllowAlways && (
         <p
           id={allowAlwaysHintId}
@@ -464,7 +587,7 @@ export default function ToolApproval({
         />
       )}
 
-      {active === 'reject' && (
+      {active === 'reject' && !submitOnDecision && (
         <TextareaAutosize
           value={reason}
           disabled={locked}

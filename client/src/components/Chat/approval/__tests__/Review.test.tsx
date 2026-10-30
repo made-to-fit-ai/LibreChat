@@ -2,11 +2,14 @@ import React from 'react';
 import { RecoilRoot } from 'recoil';
 import { Provider as JotaiProvider, createStore } from 'jotai';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { activeGenerationCreatedAtByConvoId } from '@librechat/chat/react';
 import type { Agents } from 'librechat-data-provider';
 import { PendingToolApprovalButton, PendingToolApprovalPanel } from '../Review';
 import { composerOverlayCountFamily } from '~/components/Chat/Input/overlay';
 import ApprovalProvider from '../../Messages/Content/ApprovalContext';
 import { pendingApprovalActionFamily } from '../state';
+import { ChatContext } from '~/Providers/ChatContext';
 
 jest.mock('@librechat/client', () => ({
   Button: jest
@@ -27,7 +30,11 @@ jest.mock('@librechat/client', () => ({
   TooltipAnchor: ({ render }: { render: React.ReactNode }) => render,
 }));
 
+let mockAgentsConfig: { toolApproval?: { friendly?: boolean } } | undefined;
+const mockMutate = jest.fn();
+
 jest.mock('~/hooks', () => ({
+  useGetAgentsConfig: () => ({ agentsConfig: mockAgentsConfig }),
   useLocalize: () => (key: string, values?: Record<string | number, string | number>) => {
     const labels: Record<string, string> = {
       com_ui_review_action: 'Review 1 action',
@@ -46,14 +53,17 @@ jest.mock('~/hooks', () => ({
       com_ui_reject: 'Reject',
       com_ui_continue: 'Continue',
       com_ui_collapse: 'Collapse',
+      com_ui_dont_approve: "Don't approve",
+      com_ui_approve_and_send: 'Approve and send',
     };
     return labels[key] ?? key;
   },
 }));
 
 jest.mock('~/data-provider', () => ({
-  useSubmitToolApprovalMutation: () => ({ mutate: jest.fn() }),
+  useSubmitToolApprovalMutation: () => ({ mutate: mockMutate }),
   useSubmitAskAnswerMutation: () => ({ mutate: jest.fn() }),
+  useMCPToolsQuery: () => ({ data: undefined }),
 }));
 
 jest.mock('~/store/agents', () => ({
@@ -132,6 +142,92 @@ describe('PendingToolApproval', () => {
       'aria-expanded',
       'false',
     );
+  });
+
+  describe('friendly mode', () => {
+    const singleAction: Agents.PendingAction = {
+      ...pendingAction,
+      payload: {
+        type: 'tool_approval',
+        action_requests: [
+          {
+            name: 'email_send_client_email_mcp_workbench',
+            tool_call_id: 'call-1',
+            arguments: { note: 'Thanks' },
+          },
+        ],
+        review_configs: [
+          {
+            action_name: 'email_send_client_email_mcp_workbench',
+            tool_call_id: 'call-1',
+            allowed_decisions: ['approve', 'reject', 'edit', 'respond'],
+          },
+        ],
+      },
+    };
+
+    const renderFriendly = (action: Agents.PendingAction) => {
+      const jotaiStore = createStore();
+      jotaiStore.set(pendingApprovalActionFamily('conversation-1'), action);
+      jotaiStore.set(activeGenerationCreatedAtByConvoId('conversation-1'), 1000);
+      render(
+        <RecoilRoot>
+          <QueryClientProvider client={new QueryClient()}>
+            <JotaiProvider store={jotaiStore}>
+              <ChatContext.Provider
+                value={{ conversation: { conversationId: 'conversation-1' } } as never}
+              >
+                <ApprovalProvider pendingAction={action}>
+                  <PendingToolApprovalPanel conversationId="conversation-1" />
+                </ApprovalProvider>
+              </ChatContext.Provider>
+            </JotaiProvider>
+          </QueryClientProvider>
+        </RecoilRoot>,
+      );
+    };
+
+    beforeEach(() => {
+      mockAgentsConfig = { toolApproval: { friendly: true } };
+      mockMutate.mockClear();
+    });
+
+    afterEach(() => {
+      mockAgentsConfig = undefined;
+    });
+
+    test('a single action approves and submits in one click, without Continue or a counter', async () => {
+      renderFriendly(singleAction);
+      await screen.findByRole('region', { name: 'Review 1 action' });
+      expect(screen.queryByRole('button', { name: 'Continue' })).not.toBeInTheDocument();
+      expect(screen.queryByText(/decisions selected/)).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Approve and send' }));
+      expect(mockMutate).toHaveBeenCalledTimes(1);
+      expect(mockMutate.mock.calls[0][0]).toMatchObject({
+        actionId: 'action-1',
+        decisions: [{ tool_call_id: 'call-1', decision: 'approve' }],
+      });
+    });
+
+    test("Don't approve rejects and submits in one click", async () => {
+      renderFriendly(singleAction);
+      await screen.findByRole('region', { name: 'Review 1 action' });
+      fireEvent.click(screen.getByRole('button', { name: "Don't approve" }));
+      expect(mockMutate.mock.calls[0][0]).toMatchObject({
+        decisions: [{ tool_call_id: 'call-1', decision: 'reject' }],
+      });
+    });
+
+    test('a batch keeps per-item decisions and the Continue submit', async () => {
+      renderFriendly(pendingAction);
+      await screen.findByRole('region', { name: 'Review 2 actions' });
+      expect(screen.getByText('0 of 2 decisions selected')).toBeInTheDocument();
+      screen.getAllByRole('button', { name: 'Approve' }).forEach((b) => fireEvent.click(b));
+      expect(mockMutate).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      expect(mockMutate).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('collapsing from the keyboard', () => {

@@ -14,10 +14,14 @@ import {
   pendingApprovalActionFamily,
 } from '~/components/Chat/approval/state';
 import { buildApprovalPreview, buildApprovalPreviews } from '~/components/Chat/approval/preview';
+import { indexFriendlyTools, isSendTool } from '~/components/Chat/approval/friendly';
 import ToolApproval from '~/components/Chat/Messages/Content/ToolApproval';
+import FriendlyReview from '~/components/Chat/approval/FriendlyReview';
 import { useComposerOverlay } from '~/components/Chat/Input/overlay';
+import { useGetAgentsConfig, useLocalize } from '~/hooks';
+import { useMCPToolsQuery } from '~/data-provider';
 import { isCancelKey } from '~/utils/shortcuts';
-import { useLocalize } from '~/hooks';
+import { cn } from '~/utils';
 
 function usePendingToolApproval(conversationId: string) {
   const pendingAction = useAtomValue(pendingApprovalActionFamily(conversationId));
@@ -67,6 +71,14 @@ export const PendingToolApprovalPanel = memo(function PendingToolApprovalPanel({
   const { getDecisions, getStatus, isReady } = useApprovalContext();
   const { submitToolApproval } = useResumeSubmit();
   const actionId = pendingAction?.actionId;
+  const { agentsConfig } = useGetAgentsConfig();
+  const friendly = agentsConfig?.toolApproval?.friendly === true;
+  /** The catalog carries each MCP tool's title, description and input schema. */
+  const { data: mcpServers } = useMCPToolsQuery({ enabled: friendly });
+  const toolInfo = useMemo(
+    () => (friendly ? indexFriendlyTools(mcpServers?.servers) : new Map()),
+    [friendly, mcpServers],
+  );
 
   useEffect(() => {
     if (actionId != null) {
@@ -112,6 +124,9 @@ export const PendingToolApprovalPanel = memo(function PendingToolApprovalPanel({
   const decisions = getDecisions(pendingAction.actionId);
   const status = getStatus(pendingAction.actionId);
   const locked = status === 'submitting' || status === 'submitted' || status === 'expired';
+  const failed = status === 'expired' || status === 'error';
+  /** A lone friendly action decides and submits from its own buttons; batches keep Continue. */
+  const oneClick = friendly && reviews.length === 1;
 
   return (
     <div
@@ -149,30 +164,49 @@ export const PendingToolApprovalPanel = memo(function PendingToolApprovalPanel({
             }
           />
         </div>
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+        <div
+          className={cn(
+            'min-h-0 flex-1 overflow-y-auto',
+            friendly ? 'space-y-6 p-4' : 'space-y-3 p-3',
+          )}
+        >
           {reviews.map(({ request, config, preview }, index) => (
             <section
               key={request.tool_call_id}
               aria-labelledby={`approval-${request.tool_call_id}`}
             >
-              <div className="mb-2">
-                <h3
-                  id={`approval-${request.tool_call_id}`}
-                  className="text-text-primary text-sm font-medium [overflow-wrap:anywhere]"
-                >
-                  {reviews.length > 1
-                    ? `${index + 1}. ${previewTitle(preview, localize)}`
-                    : previewTitle(preview, localize)}
-                </h3>
-                <p className="text-text-secondary text-xs">{localize(KIND_LABELS[preview.kind])}</p>
-              </div>
-              <pre className="border-border-light bg-surface-tertiary text-text-primary max-h-52 overflow-auto rounded-lg border p-3 font-mono text-xs break-words whitespace-pre-wrap">
-                {preview.body || localize('com_ui_no_arguments')}
-              </pre>
-              {preview.truncated && (
-                <p className="text-text-secondary mt-1 text-xs">
-                  {localize('com_ui_preview_truncated')}
-                </p>
+              {friendly ? (
+                <FriendlyReview
+                  conversationId={conversationId}
+                  request={request}
+                  info={toolInfo.get(request.name)}
+                  heading={reviews.length > 1 ? `${index + 1}. ` : undefined}
+                  reason={preview.description}
+                />
+              ) : (
+                <>
+                  <div className="mb-2">
+                    <h3
+                      id={`approval-${request.tool_call_id}`}
+                      className="text-text-primary text-sm font-medium [overflow-wrap:anywhere]"
+                    >
+                      {reviews.length > 1
+                        ? `${index + 1}. ${previewTitle(preview, localize)}`
+                        : previewTitle(preview, localize)}
+                    </h3>
+                    <p className="text-text-secondary text-xs">
+                      {localize(KIND_LABELS[preview.kind])}
+                    </p>
+                  </div>
+                  <pre className="border-border-light bg-surface-tertiary text-text-primary max-h-52 overflow-auto rounded-lg border p-3 font-mono text-xs break-words whitespace-pre-wrap">
+                    {preview.body || localize('com_ui_no_arguments')}
+                  </pre>
+                  {preview.truncated && (
+                    <p className="text-text-secondary mt-1 text-xs">
+                      {localize('com_ui_preview_truncated')}
+                    </p>
+                  )}
+                </>
               )}
               {config != null ? (
                 <ToolApproval
@@ -181,12 +215,20 @@ export const PendingToolApprovalPanel = memo(function PendingToolApprovalPanel({
                     allowed_decisions: config.allowed_decisions,
                     remember_scope: config.remember_scope,
                     remember_unavailable: config.remember_unavailable,
-                    description: preview.description,
+                    /* The friendly card prints the reason itself, beside its shield. */
+                    description: friendly ? undefined : preview.description,
                     allow_always: config.allow_always === true,
                   }}
                   toolCallId={request.tool_call_id}
                   args={request.arguments}
                   surface="composer"
+                  friendly={friendly}
+                  submitOnDecision={oneClick}
+                  approveLabel={
+                    friendly && isSendTool(request.name, toolInfo.get(request.name))
+                      ? localize('com_ui_approve_and_send')
+                      : undefined
+                  }
                 />
               ) : (
                 <p className="text-text-warning mt-2 flex items-center text-xs" role="alert">
@@ -197,35 +239,41 @@ export const PendingToolApprovalPanel = memo(function PendingToolApprovalPanel({
             </section>
           ))}
         </div>
-        <div className="border-border-light flex shrink-0 items-center justify-between gap-3 border-t px-3 py-2">
-          <span className="text-text-secondary text-xs">
-            {localize('com_ui_decisions_selected', {
-              0: decisions.length,
-              1: reviews.length,
-            })}
-          </span>
-          <div className="flex items-center gap-2">
-            {(status === 'expired' || status === 'error') && (
-              <span className="text-text-warning flex items-center text-xs" role="alert">
-                <TriangleAlert className="me-1.5 size-4" aria-hidden="true" />
-                {localize(
-                  status === 'expired' ? 'com_ui_approval_expired' : 'com_ui_approval_error',
-                )}
+        {(!oneClick || failed) && (
+          <div className="border-border-light flex shrink-0 items-center justify-between gap-3 border-t px-3 py-2">
+            {!oneClick && (
+              <span className="text-text-secondary text-xs">
+                {localize('com_ui_decisions_selected', {
+                  0: decisions.length,
+                  1: reviews.length,
+                })}
               </span>
             )}
-            <Button
-              type="button"
-              size="sm"
-              variant="submit"
-              disabled={!isReady(pendingAction.actionId) || locked}
-              onClick={() => submitToolApproval(pendingAction.actionId)}
-            >
-              {status === 'submitting'
-                ? localize('com_ui_submitting')
-                : localize('com_ui_continue')}
-            </Button>
+            <div className="flex items-center gap-2">
+              {failed && (
+                <span className="text-text-warning flex items-center text-xs" role="alert">
+                  <TriangleAlert className="me-1.5 size-4" aria-hidden="true" />
+                  {localize(
+                    status === 'expired' ? 'com_ui_approval_expired' : 'com_ui_approval_error',
+                  )}
+                </span>
+              )}
+              {!oneClick && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="submit"
+                  disabled={!isReady(pendingAction.actionId) || locked}
+                  onClick={() => submitToolApproval(pendingAction.actionId)}
+                >
+                  {status === 'submitting'
+                    ? localize('com_ui_submitting')
+                    : localize('com_ui_continue')}
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

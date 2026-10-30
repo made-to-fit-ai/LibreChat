@@ -61,6 +61,10 @@ export interface LCFunctionTool {
   /** Raw upstream tool name when the model-facing key stripped a redundant
    *  server-name prefix — tool calls must send THIS name to the server. */
   serverToolName?: string;
+  /** Human-readable MCP tool title, kept for review surfaces. */
+  title?: string;
+  /** MCP tool annotations (title, readOnlyHint, destructiveHint, ...), kept for review surfaces. */
+  annotations?: Tool['annotations'];
 }
 
 export type LCAvailableTools = Record<string, LCFunctionTool>;

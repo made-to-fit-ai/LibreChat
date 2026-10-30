@@ -267,6 +267,13 @@ const getMCPTools = async (req, res) => {
                *  server-name prefix — the agent editor migrates legacy
                *  persisted ids only when this proves the same tool. */
               ...(toolData.serverToolName != null && { serverToolName: toolData.serverToolName }),
+              /** Review surfaces render the title, annotations and field
+               *  descriptions instead of the runtime name and raw JSON. */
+              ...(toolData.title != null && { title: toolData.title }),
+              ...(toolData.annotations != null && { annotations: toolData.annotations }),
+              ...(toolData.function.parameters != null && {
+                parameters: toolData.function.parameters,
+              }),
             });
           }
         }

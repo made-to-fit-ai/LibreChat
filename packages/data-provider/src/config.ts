@@ -1258,6 +1258,14 @@ export const toolApprovalPolicySchema = z
     /** Optional reason template surfaced in the prompt; `{tool}` is interpolated. */
     reason: z.string().optional(),
     /**
+     * Render the review panel for non-technical reviewers: the tool's MCP title and
+     * description instead of its runtime name, arguments as a labelled list built from the
+     * tool's input schema, a preview of the draft a `draft_id` argument refers to, and
+     * plain-language decision buttons. The raw name and JSON stay behind a "Details"
+     * disclosure. Defaults to `false`: the panel keeps its developer-oriented layout.
+     */
+    friendly: z.boolean().optional(),
+    /**
      * Offer "Always allow" on the approval card. Choosing it auto-approves that exact tool
      * (MCP names include their server) for the rest of the conversation. The server stores
      * and enforces the choice; `deny` and `ask` rules and programmatic hooks still win, and

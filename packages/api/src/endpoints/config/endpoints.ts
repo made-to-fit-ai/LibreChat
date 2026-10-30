@@ -148,6 +148,7 @@ export function createEndpointsConfigService(deps: EndpointsConfigDeps): {
           allow: toolApproval?.allow,
           deny: toolApproval?.deny,
           ask: toolApproval?.ask,
+          friendly: toolApproval?.friendly === true,
         },
       };
     }

@@ -208,6 +208,22 @@ export type MCPTool = {
   /** Raw upstream tool name when the model-facing key stripped a redundant
    *  server-name prefix — gates the agent editor's legacy id migration. */
   serverToolName?: string;
+  /** Human-readable MCP tool title, when the server provides one. */
+  title?: string;
+  /** MCP tool annotations (`title`, `readOnlyHint`, `destructiveHint`, ...). */
+  annotations?: {
+    title?: string;
+    readOnlyHint?: boolean;
+    destructiveHint?: boolean;
+    idempotentHint?: boolean;
+    openWorldHint?: boolean;
+  };
+  /** Normalised JSON schema for the tool's input; field descriptions label arguments on review. */
+  parameters?: {
+    type?: string;
+    properties?: Record<string, { type?: string | string[]; title?: string; description?: string }>;
+    required?: string[];
+  };
 };
 
 export type MCPServer = {

@@ -75,7 +75,7 @@ export function parseToolName(
  * use `parseToolName` directly when you need structured parts (e.g. to
  * render a code-style badge for the tool name next to the server).
  *
- *   - MCP tool  → server name (keeps the header summary short)
+ *   - MCP tool  → server's configured title, else server name (keeps the header summary short)
  *   - Native   → localized friendly name from {@link TOOL_FRIENDLY_NAME_KEYS}
  *   - Unknown  → raw name
  */
@@ -83,9 +83,10 @@ export function getToolDisplayLabel(
   rawName: string,
   localize: (key: TranslationKeys) => string,
   knownServerNames?: readonly string[],
+  serverTitles?: ReadonlyMap<string, string>,
 ): string {
   const parsed = parseToolName(rawName, knownServerNames);
-  if (parsed.mcpServer) return parsed.mcpServer;
+  if (parsed.mcpServer) return serverTitles?.get(parsed.mcpServer) ?? parsed.mcpServer;
   if (parsed.friendlyKey) return localize(parsed.friendlyKey);
   return parsed.toolName;
 }

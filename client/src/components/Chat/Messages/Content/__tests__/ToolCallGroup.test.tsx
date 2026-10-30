@@ -11,6 +11,7 @@ import { FoldHeaderContext } from '../rail';
 import { ToolAuthWarning } from '../auth';
 
 const mockMCPServerNames: string[] = [];
+const mockMCPServerTitles = new Map<string, string>();
 
 jest.mock('~/hooks', () => ({
   useLocalize: () => (key: string, values?: Record<string | number, string>) => {
@@ -102,6 +103,7 @@ jest.mock('~/hooks/MCP', () => {
   return {
     useMCPIconMap: () => new Map(),
     useMCPServerNames: () => mockMCPServerNames,
+    useMCPServerTitles: () => mockMCPServerTitles,
   };
 });
 
@@ -151,10 +153,15 @@ jest.mock('~/utils/approval', () => ({
 jest.mock('~/utils', () => ({
   getPartKeyIndex: jest.requireActual('~/utils').getPartKeyIndex,
   cn: (...classes: Array<string | false | null | undefined>) => classes.filter(Boolean).join(' '),
-  getToolDisplayLabel: (name: string, _localize: unknown, knownServerNames?: readonly string[]) => {
+  getToolDisplayLabel: (
+    name: string,
+    _localize: unknown,
+    knownServerNames?: readonly string[],
+    serverTitles?: ReadonlyMap<string, string>,
+  ) => {
     const configuredServer = knownServerNames?.find((server) => name.endsWith(`_mcp_${server}`));
     if (configuredServer) {
-      return configuredServer;
+      return serverTitles?.get(configuredServer) ?? configuredServer;
     }
     if (name.includes('_mcp_')) {
       return name.slice(name.lastIndexOf('_mcp_') + '_mcp_'.length);
@@ -315,6 +322,7 @@ describe('ToolCallGroup image hoisting', () => {
   beforeEach(() => {
     mockScheduleMessageContentLayoutReconcile.mockClear();
     mockMCPServerNames.length = 0;
+    mockMCPServerTitles.clear();
     mockSubmittedAskAnswers.clear();
   });
 
@@ -900,6 +908,20 @@ describe('ToolCallGroup image hoisting', () => {
     });
 
     expect(screen.getByRole('button', { name: /^Google_mcp_Workspace$/ })).toBeInTheDocument();
+  });
+
+  it('labels an MCP tool with its server title when one is configured', () => {
+    mockMCPServerNames.push('accounting_insights');
+    mockMCPServerTitles.set('accounting_insights', 'Practice insights');
+    renderGroup({
+      ...baseProps,
+      parts: [
+        { part: makePart('mcp-1', 'result', 'list_clients_mcp_accounting_insights'), idx: 0 },
+      ],
+      lastContentIdx: 0,
+    });
+
+    expect(screen.getByRole('button', { name: /^Practice insights$/ })).toBeInTheDocument();
   });
 
   it('summarizes repeated completed web searches as an outcome and count', () => {
