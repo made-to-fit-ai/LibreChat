@@ -1,13 +1,11 @@
-import { useMemo } from 'react';
 import { GitBranchPlus } from 'lucide-react';
-import { EModelEndpoint, parseEphemeralAgentId, stripAgentIdSuffix } from 'librechat-data-provider';
-import type { TMessage, Agent } from 'librechat-data-provider';
+import type { TMessage } from 'librechat-data-provider';
 import MessageTimestamp from '~/components/Chat/Messages/ui/MessageTimestamp';
 import { useMessagePartsHost } from '~/Providers/MessagePartsHostContext';
 import { useBranchMessageMutation } from '~/data-provider/Messages';
 import MessageIcon from '~/components/Share/MessageIcon';
-import { useAgentsMapContext } from '~/Providers';
 import { useLocalize } from '~/hooks';
+import useSpeaker from './speaker';
 import { cn } from '~/utils';
 
 type SiblingHeaderProps = {
@@ -34,7 +32,6 @@ export default function SiblingHeader({
   conversationId,
   isSubmitting,
 }: SiblingHeaderProps) {
-  const agentsMap = useAgentsMapContext();
   const localize = useLocalize();
   const showToast = useMessagePartsHost().useToast();
 
@@ -60,50 +57,12 @@ export default function SiblingHeader({
     branchMessage.mutate({ messageId, agentId });
   };
 
-  const { displayName, displayEndpoint, displayModel, agent } = useMemo(() => {
-    // First, try to look up as a real agent
-    if (agentId) {
-      // Strip ____N suffix if present (used to distinguish parallel agents with same ID)
-      const baseAgentId = stripAgentIdSuffix(agentId);
-
-      const foundAgent = agentsMap?.[baseAgentId] as Agent | undefined;
-      if (foundAgent) {
-        return {
-          displayName: foundAgent.name,
-          displayEndpoint: EModelEndpoint.agents,
-          displayModel: foundAgent.model,
-          agent: foundAgent,
-        };
-      }
-
-      // Try to parse as ephemeral agent ID (endpoint__model___sender format)
-      const parsed = parseEphemeralAgentId(agentId);
-      if (parsed) {
-        return {
-          displayName: parsed.sender || parsed.model || 'AI',
-          displayEndpoint: parsed.endpoint,
-          displayModel: parsed.model,
-          agent: undefined,
-        };
-      }
-
-      // agentId exists but couldn't be parsed as ephemeral - use it as-is for display
-      return {
-        displayName: baseAgentId,
-        displayEndpoint: EModelEndpoint.agents,
-        displayModel: undefined,
-        agent: undefined,
-      };
-    }
-
-    // Use message model/endpoint as last resort
-    return {
-      displayName: 'Agent',
-      displayEndpoint: EModelEndpoint.agents,
-      displayModel: undefined,
-      agent: undefined,
-    };
-  }, [agentId, agentsMap]);
+  const {
+    name: displayName,
+    endpoint: displayEndpoint,
+    model: displayModel,
+    agent,
+  } = useSpeaker(agentId);
 
   return (
     <div className="border-border-light mb-2 flex items-center justify-between gap-2 border-b pb-2">

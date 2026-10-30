@@ -1702,6 +1702,10 @@ export const agentsEndpointSchema = baseEndpointSchema
         .default(DEFAULT_STREAM_KEEPALIVE_INTERVAL_MS),
       /** Graph steps an agent run may take; a run with fewer than 1 cannot take a step. */
       recursionLimit: z.number().int().min(1).optional(),
+      /** Most handoffs a run's top-level graph may make between agents before it stops
+       *  (nested subagent graphs are not bounded by it). Unset keeps today's behaviour:
+       *  only `recursionLimit` bounds a handoff chain. */
+      maxHandoffs: z.number().int().min(0).optional(),
       disableBuilder: z.boolean().optional().default(false),
       /** Optional workspace guidance acquisition budget, separate from command execution. */
       repositoryInstructions: z
@@ -3111,6 +3115,10 @@ export const interfaceSchema = z
      *  composer's `+` menu (to see and switch) while the chips under the composer stay hidden.
      *  Off: `hideBadgeRow` empties both, as before. */
     composerToolsInMenu: z.boolean().optional(),
+    /** In a reply where a handoff brings in another agent, head that agent's part of the
+     *  reply with its name and avatar, so a chat with several agents reads like a group
+     *  chat. Off: the whole reply carries the first agent's name, as before. */
+    handoffSpeakers: z.boolean().optional(),
     mcpServers: mcpServersSchema.optional(),
     modelSelect: z.boolean().optional(),
     /** Set to false during a rolling upgrade, until every API replica supports title ownership and old title jobs drain. */
@@ -3433,6 +3441,7 @@ export const interfaceSchema = z
     plainToolDetails: false,
     composerSendHint: false,
     composerToolsInMenu: false,
+    handoffSpeakers: false,
     remoteAgents: {
       use: false,
       create: false,

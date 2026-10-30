@@ -355,6 +355,31 @@ describe('run file SDK bridge', () => {
     expect(config.graphConfig.agents[0].graphTools).toBeUndefined();
   });
 
+  describe('maxHandoffs', () => {
+    const handoffAgents = () => [
+      agent('parent', { edges: [{ from: 'parent', to: 'worker', edgeType: 'handoff' }] }),
+      agent('worker'),
+    ];
+    const withMaxHandoffs = (maxHandoffs?: number) =>
+      ({ endpoints: { agents: { maxHandoffs } } }) as unknown as Parameters<
+        typeof createRun
+      >[0]['appConfig'];
+
+    it('leaves the graph config untouched when unset', async () => {
+      const config = await create(makeSession(false), handoffAgents(), {
+        appConfig: withMaxHandoffs(),
+      });
+      expect(config.graphConfig).not.toHaveProperty('maxHandoffs');
+    });
+
+    it('passes the configured limit to a multi-agent graph', async () => {
+      const config = await create(makeSession(false), handoffAgents(), {
+        appConfig: withMaxHandoffs(2),
+      });
+      expect(config.graphConfig).toMatchObject({ type: 'multi-agent', maxHandoffs: 2 });
+    });
+  });
+
   it.each([
     agent('writer', { provider: 'anthropic' }),
     agent('writer', { endpoint: 'restricted-endpoint' }),

@@ -2754,6 +2754,10 @@ export async function createRun({
 
   if (agentInputs.length > 1 || ((graphConfig as MultiAgentGraphConfig).edges?.length ?? 0) > 0) {
     (graphConfig as unknown as MultiAgentGraphConfig).type = 'multi-agent';
+    if (typeof agentsEndpointConfig?.maxHandoffs === 'number') {
+      (graphConfig as unknown as MultiAgentGraphConfig).maxHandoffs =
+        agentsEndpointConfig.maxHandoffs;
+    }
   } else {
     (graphConfig as StandardGraphConfig).type = 'standard';
   }

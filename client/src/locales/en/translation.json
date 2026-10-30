@@ -2706,6 +2706,7 @@
   "com_ui_reference_saved_memories_description": "Allow the assistant to reference and use your saved memories when responding",
   "com_ui_referenced_quotes": "Referenced quotes",
   "com_ui_reply_ready": "Your reply is ready",
+  "com_ui_reply_from": "Reply from {{0}}",
   "com_ui_refresh": "Refresh",
   "com_ui_refresh_page": "Refresh page",
   "com_ui_regenerate": "Regenerate",

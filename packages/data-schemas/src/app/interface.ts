@@ -98,6 +98,7 @@ export async function loadDefaultInterface({
     plainToolDetails: interfaceConfig?.plainToolDetails ?? defaults.plainToolDetails,
     composerSendHint: interfaceConfig?.composerSendHint ?? defaults.composerSendHint,
     composerToolsInMenu: interfaceConfig?.composerToolsInMenu ?? defaults.composerToolsInMenu,
+    handoffSpeakers: interfaceConfig?.handoffSpeakers ?? defaults.handoffSpeakers,
     autoSubmitFromUrl: interfaceConfig?.autoSubmitFromUrl ?? defaults.autoSubmitFromUrl,
     colorModeFromUrl: interfaceConfig?.colorModeFromUrl ?? defaults.colorModeFromUrl,
     buildInfo: interfaceConfig?.buildInfo ?? defaults.buildInfo,

@@ -188,6 +188,7 @@ function MessageParts(props: TMessageProps) {
                 messageId={message.messageId}
                 renderOwnerId={message.clientQueueParentMessageId}
                 authorHeader={isCreatedByUser === true ? undefined : RESUME_AUTHOR_HEADER}
+                messageAgentId={message.model}
                 setSiblingIdx={setSiblingIdx}
                 isCreatedByUser={message.isCreatedByUser}
                 conversationId={conversation?.conversationId}
