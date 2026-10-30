@@ -234,7 +234,8 @@ const ConversationsSection = memo(() => {
           Chats heading, where the list they act on is labelled. On mobile the field
           itself lives in the drawer's bottom bar, within thumb reach. */}
         {/* A named row beside the rail's icon, so starting over never depends on
-          reading a tooltip. Mobile keeps its own button in the drawer header. */}
+          reading a tooltip. Its name differs from the icon's "New chat" so the two
+          links stay distinguishable. Mobile keeps its own button in the drawer header. */}
         {!isSmallScreen && (
           <div className="px-2 pb-1">
             <Button asChild variant="nav" size="row" className="w-full justify-start">
@@ -246,7 +247,7 @@ const ConversationsSection = memo(() => {
               >
                 <SquarePen className="text-text-primary size-5 shrink-0" aria-hidden="true" />
                 <span className="text-text-primary text-sm font-medium">
-                  {localize('com_ui_new_chat')}
+                  {localize('com_ui_start_chat')}
                 </span>
               </a>
             </Button>
