@@ -3794,6 +3794,7 @@
   "com_ui_code_setup_deny": "Deny setup",
   "com_ui_code_setup_saving": "Saving your decision…",
   "com_ui_terms_accept_failed": "Could not accept the terms. Please try again.",
+  "com_ui_connected_systems": "Connected systems",
   "com_ui_connected_to": "Connected to",
   "com_ui_help": "Help",
   "com_ui_help_guide_intro": "Ask a question in the box at the bottom of the screen. The assistant looks up the answer in your organization's systems and shows you where it came from.",

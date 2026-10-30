@@ -197,6 +197,8 @@ interface BarProps {
   /** Mirrors the old `showEphemeralBadges` gate: agents and assistants carry
    *  their own tool config, and a spec can suppress the row outright. */
   showTools: boolean;
+  /** The spec hides the chips; whatever `showTools` allows stays in the `+` menu. */
+  hideChips?: boolean;
   isSubmitting: boolean;
   showSpeech: boolean;
   speechDisabled: boolean;
@@ -230,6 +232,7 @@ function Bar({
   canAttach,
   anchorRef,
   showTools,
+  hideChips = false,
   isSubmitting,
   showSpeech,
   speechDisabled,
@@ -271,7 +274,10 @@ function Bar({
   /* Catalog skills are excluded: a picked skill is staged context for the next
      turn, so it belongs in the tray above the textarea with files and quotes.
      Built-in tool pins remain visible while off. */
-  const barEntries = useMemo(() => projectBarEntries(entries), [entries]);
+  const barEntries = useMemo(
+    () => (hideChips ? [] : projectBarEntries(entries)),
+    [entries, hideChips],
+  );
   /* Catalog order puts long skill and MCP names mid-row, stranding the rest of
      that row; packing widest-first fills the rows instead. */
   const { ordered: packedEntries, rootRef, widths } = useChipPacking(barEntries);
@@ -401,6 +407,7 @@ function Bar({
           <Palette
             index={index}
             entries={entries}
+            plainServerLabel={hideChips}
             disabled={disabled}
             dictating={dictating}
             onOpened={onPaletteOpen}

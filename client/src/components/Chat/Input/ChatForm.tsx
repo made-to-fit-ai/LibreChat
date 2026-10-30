@@ -217,16 +217,20 @@ const ChatForm = memo(function ChatForm({
     [conversation?.spec, startupConfig],
   );
   const filesLoading = useMemo(() => hasIncompleteFiles(files), [files]);
+  /** A spec's `hideBadgeRow` hides the chips under the composer; with
+   *  `interface.composerToolsInMenu` the `+` menu still lists the tools. */
+  const hideChips = modelSpec?.hideBadgeRow === true;
+  const toolsInMenu = startupConfig?.interface?.composerToolsInMenu === true;
   /** Agents and assistants carry their own tool configuration, so the composer's
    *  ephemeral tool controls only apply elsewhere, and a spec can suppress them
    *  outright. Same gate the old `showEphemeralBadges` prop applied. */
   const showTools = useMemo(
     () =>
       !!endpoint &&
-      modelSpec?.hideBadgeRow !== true &&
+      (!hideChips || toolsInMenu) &&
       !isAgentsEndpoint(endpoint) &&
       !isAssistantsEndpoint(endpoint),
-    [endpoint, modelSpec?.hideBadgeRow],
+    [endpoint, hideChips, toolsInMenu],
   );
   const conversationId = useMemo(
     () => conversation?.conversationId ?? Constants.NEW_CONVO,
@@ -1008,6 +1012,7 @@ const ChatForm = memo(function ChatForm({
                   canAttach={attachTarget.canAttach}
                   anchorRef={composerBoxRef}
                   showTools={showTools}
+                  hideChips={hideChips}
                   isSubmitting={isSubmitting}
                   showSpeech={SpeechToText}
                   speechDisabled={speechDisabled}

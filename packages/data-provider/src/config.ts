@@ -3107,6 +3107,10 @@ export const interfaceSchema = z
      *  is focused and holds text, in a row reserved under the composer. Hidden
      *  below `sm`. Screen readers always get it as a description. */
     composerSendHint: z.boolean().optional(),
+    /** When a model spec sets `hideBadgeRow`, keep its tools and MCP servers listed in the
+     *  composer's `+` menu (to see and switch) while the chips under the composer stay hidden.
+     *  Off: `hideBadgeRow` empties both, as before. */
+    composerToolsInMenu: z.boolean().optional(),
     mcpServers: mcpServersSchema.optional(),
     modelSelect: z.boolean().optional(),
     /** Set to false during a rolling upgrade, until every API replica supports title ownership and old title jobs drain. */
@@ -3428,6 +3432,7 @@ export const interfaceSchema = z
     helpGuide: false,
     plainToolDetails: false,
     composerSendHint: false,
+    composerToolsInMenu: false,
     remoteAgents: {
       use: false,
       create: false,

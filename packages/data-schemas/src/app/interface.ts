@@ -97,6 +97,7 @@ export async function loadDefaultInterface({
     helpGuide: interfaceConfig?.helpGuide ?? defaults.helpGuide,
     plainToolDetails: interfaceConfig?.plainToolDetails ?? defaults.plainToolDetails,
     composerSendHint: interfaceConfig?.composerSendHint ?? defaults.composerSendHint,
+    composerToolsInMenu: interfaceConfig?.composerToolsInMenu ?? defaults.composerToolsInMenu,
     autoSubmitFromUrl: interfaceConfig?.autoSubmitFromUrl ?? defaults.autoSubmitFromUrl,
     colorModeFromUrl: interfaceConfig?.colorModeFromUrl ?? defaults.colorModeFromUrl,
     buildInfo: interfaceConfig?.buildInfo ?? defaults.buildInfo,
