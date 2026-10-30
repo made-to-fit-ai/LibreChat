@@ -168,6 +168,9 @@ const collectMessageContent = (
     // Attribute the resume point before applying a handoff on that same part.
     if (prevType === ContentTypes.STEER && part.type !== ContentTypes.STEER) {
       resumeAuthors.set(contentIndices?.[index] ?? index + contentIndexOffset, activeAgentId);
+      /* The resume attribution restates the message's own author, so a member's
+         continuation after a steer earns its header again. */
+      speakerId = ownerAgentId ?? undefined;
     }
     const partAgentId = getPartAgentId(part);
     if (part.type === ContentTypes.AGENT_UPDATE) {

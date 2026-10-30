@@ -1702,8 +1702,9 @@ export const agentsEndpointSchema = baseEndpointSchema
         .default(DEFAULT_STREAM_KEEPALIVE_INTERVAL_MS),
       /** Graph steps an agent run may take; a run with fewer than 1 cannot take a step. */
       recursionLimit: z.number().int().min(1).optional(),
-      /** Most handoffs one run may make between agents before it stops. Unset keeps
-       *  today's behaviour: only `recursionLimit` bounds a handoff chain. */
+      /** Most handoffs a run's top-level graph may make between agents before it stops
+       *  (nested subagent graphs are not bounded by it). Unset keeps today's behaviour:
+       *  only `recursionLimit` bounds a handoff chain. */
       maxHandoffs: z.number().int().min(0).optional(),
       disableBuilder: z.boolean().optional().default(false),
       /** Optional workspace guidance acquisition budget, separate from command execution. */

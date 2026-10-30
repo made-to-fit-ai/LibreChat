@@ -132,6 +132,17 @@ describe('SpeakerHeader', () => {
     expect(follows(headings[1], parts[4])).toBeTruthy();
   });
 
+  it('heads a leading block that is not from the message agent', () => {
+    mockHandoffSpeakers = true;
+    render(
+      <ContentParts {...baseProps} content={[text('b1', 'agent_b'), text('a1', 'agent_a')]} />,
+    );
+    expect(screen.getAllByRole('heading').map((h) => h.getAttribute('aria-label'))).toEqual([
+      'Reply from B',
+      'Reply from A',
+    ]);
+  });
+
   it('renders no speaker headings when the lever is off', () => {
     mockHandoffSpeakers = false;
     render(<ContentParts {...baseProps} content={handoffContent} />);
