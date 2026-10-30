@@ -11,9 +11,11 @@ import type { ReactNode } from 'react';
 const AuthorHeader = memo(function AuthorHeader({
   icon,
   label,
+  ariaLabel,
 }: {
   icon: ReactNode;
   label: string;
+  ariaLabel?: string;
 }) {
   return (
     <div className="relative flex min-h-7 w-full items-center gap-2" data-testid="author-header">
@@ -23,7 +25,10 @@ const AuthorHeader = memo(function AuthorHeader({
       >
         {icon}
       </div>
-      <h2 className="text-text-primary min-w-0 truncate text-sm font-semibold select-none">
+      <h2
+        className="text-text-primary min-w-0 truncate text-sm font-semibold select-none"
+        aria-label={ariaLabel}
+      >
         {label}
       </h2>
     </div>

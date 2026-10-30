@@ -241,6 +241,7 @@ const ContentRender = memo(function ContentRender({
               searchResults={searchResults}
               manualSkills={msg.manualSkills}
               authorHeader={msg.isCreatedByUser === true ? undefined : RESUME_AUTHOR_HEADER}
+              messageAgentId={msg.model}
               setSiblingIdx={setSiblingIdx}
               isLatestMessage={isLatestMessage}
               isSubmitting={isSubmitting}

@@ -58,6 +58,7 @@ import EditContentParts from './EditContentParts';
 import { EmptyText, AgentUpdate } from './Parts';
 import ApprovalProvider from './ApprovalContext';
 import Sources from '~/components/Web/Sources';
+import SpeakerHeader from './SpeakerHeader';
 import ToolCallGroup from './ToolCallGroup';
 import { blocksLiveFold } from './live';
 import Container from './Container';
@@ -142,12 +143,20 @@ const collectMessageContent = (
   nested: Pick<ReadonlyMap<TMessageContentParts, TAttachment[]>, 'get'>,
   contentIndexOffset = 0,
   contentIndices?: ReadonlyArray<number>,
+  ownerAgentId?: string | null,
 ): {
   attachments: TAttachment[];
   atIndex: Map<number, TAttachment[]>;
   resumeAuthors: ReadonlyMap<number, string | undefined>;
+  speakers: ReadonlyMap<number, string>;
 } => {
   const resumeAuthors = new Map<number, string | undefined>();
+  /** Where each block of parts from a different agent than the block before starts.
+   *  The first block is compared with the agent the message header already names,
+   *  and an agent update names the agent it hands to itself. */
+  const speakers = new Map<number, string>();
+  const speakerIds = new Set<string>();
+  let speakerId = ownerAgentId ?? undefined;
   let prevType: string | undefined;
   let activeAgentId: string | undefined;
   const atIndex = new Map<number, TAttachment[]>();
@@ -160,8 +169,16 @@ const collectMessageContent = (
     if (prevType === ContentTypes.STEER && part.type !== ContentTypes.STEER) {
       resumeAuthors.set(contentIndices?.[index] ?? index + contentIndexOffset, activeAgentId);
     }
+    const partAgentId = getPartAgentId(part);
     if (part.type === ContentTypes.AGENT_UPDATE) {
       activeAgentId = part[ContentTypes.AGENT_UPDATE]?.agentId || undefined;
+      speakerId = activeAgentId ?? speakerId;
+    } else if (partAgentId != null && part.type !== ContentTypes.ACTIVITY_LABEL) {
+      speakerIds.add(partAgentId);
+      if (partAgentId !== speakerId) {
+        speakers.set(contentIndices?.[index] ?? index + contentIndexOffset, partAgentId);
+        speakerId = partAgentId;
+      }
     }
     prevType = part.type;
     const routed = filterAttachmentsForPart(
@@ -186,7 +203,12 @@ const collectMessageContent = (
       }
     }
   });
-  return { attachments: Array.from(collected), atIndex, resumeAuthors };
+  return {
+    attachments: Array.from(collected),
+    atIndex,
+    resumeAuthors,
+    speakers: speakerIds.size > 1 && !hasParallelLanes(content) ? speakers : new Map(),
+  };
 };
 
 const getToolGroupId = (parts: PartWithIndex[], fallbackScope: number): string => {
@@ -400,6 +422,8 @@ type ContentPartsProps = {
    * response, so what follows must be visibly re-attributed to the author.
    */
   authorHeader?: ReactNode;
+  /** The agent the message header names (`message.model` for agent replies). */
+  messageAgentId?: string | null;
   conversationId?: string | null;
   attachments?: TAttachment[];
   searchResults?: { [key: string]: SearchResultData };
@@ -448,6 +472,8 @@ type ContentPartsProps = {
   laneGroups?: ReadonlySet<number>;
   /** Message-wide steer attribution retained across nested phase segments. */
   resumeAuthors?: ReadonlyMap<number, string | undefined>;
+  /** Message-wide handoff speaker starts retained across nested phase segments. */
+  speakers?: ReadonlyMap<number, string>;
   /** Message-wide tool-group expansion overrides retained across phase slices. */
   toolGroupExpansionState?: Map<string, ToolCallGroupExpansionState>;
   /** Message-wide occurrence number for each grouped tool block's first tool. */
@@ -492,6 +518,7 @@ const ContentPartsBody = memo(function ContentPartsBody({
   contentIndices,
   laneGroups,
   resumeAuthors,
+  speakers,
   toolGroupExpansionState,
   toolGroupOccurrenceByIndex,
   toolCallStepOwnersById,
@@ -962,13 +989,15 @@ const ContentPartsBody = memo(function ContentPartsBody({
     groups.flatMap((group) => {
       const first = group.type === 'single' ? group.part : group.parts[0];
       const firstIdx = first?.idx ?? -1;
+      const keyIdx = first ? getPartKeyIndex(first.part, first.idx) : firstIdx;
       const nodes: ReactElement[] = [];
-      const attribution = renderResumeAttribution(
-        firstIdx,
-        first ? getPartKeyIndex(first.part, first.idx) : firstIdx,
-      );
+      const attribution = renderResumeAttribution(firstIdx, keyIdx);
       if (attribution != null) {
         nodes.push(attribution);
+      }
+      const speaker = speakers?.get(firstIdx);
+      if (speaker != null) {
+        nodes.push(<SpeakerHeader key={`speaker-${messageId}-${keyIdx}`} agentId={speaker} />);
       }
       if (group.type === 'single') {
         const { part, idx } = group.part;
@@ -1119,6 +1148,7 @@ const ContentPartsBody = memo(function ContentPartsBody({
           contentIndices={segmentIndices}
           laneGroups={messageLaneGroups}
           resumeAuthors={resumeAuthors}
+          speakers={speakers}
           toolGroupExpansionState={expansionState}
           toolGroupOccurrenceByIndex={resolvedToolGroupOccurrences}
           toolCallStepOwnersById={resolvedToolCallStepOwners}
@@ -1490,8 +1520,16 @@ const ContentParts = memo(function ContentParts(props: ContentPartsProps) {
         nestedAttachments,
         props.contentIndexOffset,
         props.contentIndices,
+        props.messageAgentId,
       ),
-    [props.content, attachments, nestedAttachments, props.contentIndexOffset, props.contentIndices],
+    [
+      props.content,
+      attachments,
+      nestedAttachments,
+      props.contentIndexOffset,
+      props.contentIndices,
+      props.messageAgentId,
+    ],
   );
   const suppressedAppAttachments = useMemo<ReadonlySet<TAttachment>>(
     () => new Set(messageContent.attachments),
@@ -1574,6 +1612,7 @@ const ContentParts = memo(function ContentParts(props: ContentPartsProps) {
               isLast={props.isLast && end === props.content?.length}
               laneGroups={lanes}
               resumeAuthors={props.resumeAuthors ?? messageContent.resumeAuthors}
+              speakers={props.speakers ?? messageContent.speakers}
               toolCallStepOwnersById={owners}
             />
           </SoleToolContext.Provider>
@@ -1631,6 +1670,7 @@ const ContentParts = memo(function ContentParts(props: ContentPartsProps) {
                     <ContentPartsBody
                       {...props}
                       resumeAuthors={props.resumeAuthors ?? messageContent.resumeAuthors}
+                      speakers={props.speakers ?? messageContent.speakers}
                     />
                   </SoleToolContext.Provider>
                 </MCPAppSuppressionContext.Provider>
