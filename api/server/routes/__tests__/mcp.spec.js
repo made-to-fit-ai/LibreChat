@@ -4034,7 +4034,7 @@ describe('MCP Routes', () => {
 
       expect(response.status).toBe(200);
       expect(response.body.servers['user-server'].tools).toEqual([
-        { name: 'search', pluginKey, description: 'Search' },
+        { name: 'search', pluginKey, description: 'Search', parameters: { type: 'object' } },
       ]);
       expect(mockLoadMCPServerCatalogs).toHaveBeenCalledWith({
         user: { id: 'test-user-id' },
@@ -4089,6 +4089,7 @@ describe('MCP Routes', () => {
           name: 'search',
           pluginKey,
           description: 'Search',
+          parameters: { type: 'object' },
         },
       ]);
       expect(mockLoadMCPServerCatalogs).toHaveBeenCalledWith({
