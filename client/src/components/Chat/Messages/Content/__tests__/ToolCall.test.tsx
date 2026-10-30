@@ -28,6 +28,9 @@ jest.mock('~/hooks', () => ({
       com_ui_via_server: `via ${values?.[0]}`,
       com_ui_tool_failed: 'failed',
       com_ui_tool_name_set_memory: 'Save Memory',
+      com_ui_tool_lookup_time: 'Lookup',
+      com_ui_tool_send_time: 'Send',
+      com_ui_tool_action_time: 'Action',
     };
     return translations[key] || key;
   },
@@ -44,6 +47,14 @@ jest.mock('~/hooks', () => ({
 }));
 
 const mockMCPToolTitles = new Map<string, string>();
+const mockMCPToolInfo = new Map<string, unknown>();
+const mockMCPReadOnlyTools = new Set<string>();
+let mockStartupConfig: TStartupConfig | undefined;
+
+jest.mock('~/data-provider', () => ({
+  ...jest.requireActual('~/data-provider'),
+  useGetStartupConfig: () => ({ data: mockStartupConfig }),
+}));
 
 jest.mock('~/hooks/MCP', () => {
   const mcpServerNames: string[] = [];
@@ -53,8 +64,9 @@ jest.mock('~/hooks/MCP', () => {
     useMCPAppFrame: jest.requireActual('~/hooks/MCP/useMCPAppFrame').useMCPAppFrame,
     useMCPServerNames: () => mcpServerNames,
     useMCPServerTitles: () => new Map(),
-    useMCPReadOnlyTools: () => new Set(),
+    useMCPReadOnlyTools: () => mockMCPReadOnlyTools,
     useMCPToolTitles: () => mockMCPToolTitles,
+    useMCPToolInfo: () => mockMCPToolInfo,
   };
 });
 
@@ -79,13 +91,15 @@ jest.mock('../ProgressText', () => ({
     inProgressText,
     finishedText,
     subtitle,
+    toolCallTimeLabel,
   }: {
     onClick?: () => void;
     inProgressText?: string;
     finishedText?: string;
     subtitle?: string;
+    toolCallTimeLabel?: string;
   }) => (
-    <div data-testid="progress-text" onClick={onClick}>
+    <div data-testid="progress-text" data-time-label={toolCallTimeLabel} onClick={onClick}>
       {finishedText || inProgressText}
       {subtitle && <span data-testid="subtitle">{subtitle}</span>}
     </div>
@@ -180,6 +194,9 @@ describe('ToolCall', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockStartupConfig = undefined;
+    mockMCPToolInfo.clear();
+    mockMCPReadOnlyTools.clear();
     process.env.VITE_MCP_SANDBOX_URL = 'http://sandbox.localhost:3081/api/mcp/sandbox';
   });
 
@@ -189,6 +206,61 @@ describe('ToolCall', () => {
     } else {
       process.env.VITE_MCP_SANDBOX_URL = originalSandboxUrl;
     }
+  });
+
+  describe('interface.plainToolDetails', () => {
+    const mcpName = `practice_insights${Constants.mcp_delimiter}clinic`;
+    const sendName = `send_reminder${Constants.mcp_delimiter}clinic`;
+    const schema = { parameters: { properties: { min_days_overdue: { title: 'Days overdue' } } } };
+    const plainOn = () => {
+      mockStartupConfig = { interface: { plainToolDetails: true } } as TStartupConfig;
+    };
+
+    const expand = (props: Partial<React.ComponentProps<typeof ToolCall>> = {}) => {
+      renderWithRecoil(<ToolCall {...mockProps} {...props} />);
+      fireEvent.click(screen.getByTestId('progress-text'));
+      return JSON.parse(screen.getByTestId('tool-call-info').textContent!);
+    };
+    const timeLabel = () => screen.getByTestId('progress-text').getAttribute('data-time-label');
+
+    it('words a read-only MCP call as a lookup', () => {
+      plainOn();
+      mockMCPToolInfo.set(mcpName, schema);
+      mockMCPReadOnlyTools.add(mcpName);
+      expect(expand({ name: mcpName })).toMatchObject({ wording: 'lookup', info: schema });
+      expect(timeLabel()).toBe('Lookup');
+    });
+
+    it('words a send tool as a send', () => {
+      plainOn();
+      mockMCPToolInfo.set(sendName, schema);
+      expect(expand({ name: sendName })).toMatchObject({ wording: 'send' });
+      expect(timeLabel()).toBe('Send');
+    });
+
+    it('gives a tool missing from the catalog the neutral wording', () => {
+      plainOn();
+      mockMCPReadOnlyTools.add(mcpName);
+      expect(expand({ name: mcpName })).toMatchObject({ wording: 'action' });
+      expect(timeLabel()).toBe('Action');
+    });
+
+    it('marks a step the run closed as failed', () => {
+      plainOn();
+      expect(expand({ name: mcpName, runStepStatus: 'failed' })).toMatchObject({ failed: true });
+    });
+
+    it('leaves non-MCP tools unchanged when on', () => {
+      plainOn();
+      expect(expand()).not.toHaveProperty('wording');
+      expect(timeLabel()).toBeNull();
+    });
+
+    it('leaves MCP tools unchanged when off', () => {
+      mockMCPToolInfo.set(mcpName, schema);
+      expect(expand({ name: mcpName })).not.toHaveProperty('wording');
+      expect(timeLabel()).toBeNull();
+    });
   });
 
   describe('tool preparation feedback', () => {

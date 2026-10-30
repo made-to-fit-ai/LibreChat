@@ -70,6 +70,7 @@ export default function ProgressText({
   durationMs,
   toolPreparationDurationMs,
   toolExecutionDurationMs,
+  toolCallTimeLabel,
   phaseStartAt,
   hasInput = true,
   popover = false,
@@ -96,6 +97,8 @@ export default function ProgressText({
   durationMs?: number;
   toolPreparationDurationMs?: number;
   toolExecutionDurationMs?: number;
+  /** Replaces "Tool call" before the execution time. */
+  toolCallTimeLabel?: string;
   phaseStartAt?: number;
   hasInput?: boolean;
   popover?: boolean;
@@ -179,7 +182,7 @@ export default function ProgressText({
           ...(showToolCallTime
             ? [
                 {
-                  label: localize('com_ui_tool_call_time'),
+                  label: toolCallTimeLabel ?? localize('com_ui_tool_call_time'),
                   duration: getRunStepDurationLabels(toolExecutionDurationMs, i18n.language),
                 },
               ]

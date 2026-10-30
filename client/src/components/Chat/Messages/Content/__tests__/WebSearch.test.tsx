@@ -41,12 +41,18 @@ jest.mock('~/hooks', () => ({
   }),
 }));
 
+jest.mock('~/data-provider', () => ({
+  ...jest.requireActual('~/data-provider'),
+  useGetStartupConfig: () => ({ data: undefined }),
+}));
+
 jest.mock('~/hooks/MCP', () => ({
   useMCPIconMap: () => new Map(),
   useMCPServerNames: () => [],
   useMCPServerTitles: () => new Map(),
   useMCPReadOnlyTools: () => new Set(),
   useMCPToolTitles: () => new Map(),
+  useMCPToolInfo: () => new Map(),
 }));
 
 jest.mock('~/utils/cn', () => ({

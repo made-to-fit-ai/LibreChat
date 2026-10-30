@@ -8,6 +8,16 @@ import {
   splitToolCallName,
 } from 'librechat-data-provider';
 import type { TAttachment, PartMetadata } from 'librechat-data-provider';
+import type { FriendlyToolInfo } from '~/components/Chat/approval/friendly';
+import type { ToolCallWording } from './ToolCallInfo';
+import {
+  useMCPIconMap,
+  useMCPServerNames,
+  useMCPServerTitles,
+  useMCPToolTitles,
+  useMCPToolInfo,
+  useMCPReadOnlyTools,
+} from '~/hooks/MCP';
 import {
   toolPanelSpacingClassName,
   useToolContentRequest,
@@ -15,18 +25,14 @@ import {
   LoneGroupContext,
   SoleToolContext,
 } from './disclosure';
-import {
-  useMCPIconMap,
-  useMCPServerNames,
-  useMCPServerTitles,
-  useMCPToolTitles,
-} from '~/hooks/MCP';
 import { useLocalize, useProgress, useExpandCollapse, useLazyCollapseBody } from '~/hooks';
 import { ToolIcon, getToolIconType, isError, hasRenderableOutput } from './ToolOutput';
 import { cn, getToolDisplayLabel, logger, openInNewTab } from '~/utils';
 import { isToolCallPreparing, useToolPreparation } from './preparation';
+import { isSendTool } from '~/components/Chat/approval/friendly';
 import { resolveToolCallPhase } from '~/utils/toolCallPhase';
 import { MCPAppViews } from '~/components/MCPUIResource';
+import { useGetStartupConfig } from '~/data-provider';
 import { useToolCallIntent } from './Parts/intent';
 import { AttachmentGroup } from './Parts';
 import ToolCallInfo from './ToolCallInfo';
@@ -36,6 +42,28 @@ import { hasToolParams } from './params';
 import { ToolAuthWarning } from './auth';
 import { firstErrorLine } from './live';
 import useRowHandoff from './handoff';
+
+const TIME_LABELS = {
+  lookup: 'com_ui_tool_lookup_time',
+  send: 'com_ui_tool_send_time',
+  action: 'com_ui_tool_action_time',
+} as const;
+
+/** A call reads as a lookup only when its server marks it read-only; a tool missing from the
+ *  catalog may write, so it gets the neutral wording. */
+function toolCallWording(
+  name: string,
+  info: FriendlyToolInfo | undefined,
+  readOnlyTools: Set<string>,
+): ToolCallWording {
+  if (info == null) {
+    return 'action';
+  }
+  if (readOnlyTools.has(name)) {
+    return 'lookup';
+  }
+  return isSendTool(name, info) ? 'send' : 'action';
+}
 
 export default function ToolCall({
   initialProgress = 0.1,
@@ -94,6 +122,9 @@ export default function ToolCall({
   const mcpServerNames = useMCPServerNames();
   const mcpServerTitles = useMCPServerTitles();
   const mcpToolTitles = useMCPToolTitles();
+  const mcpToolInfo = useMCPToolInfo();
+  const mcpReadOnlyTools = useMCPReadOnlyTools();
+  const { data: startupConfig } = useGetStartupConfig();
   const { function_name, domain, isMCPToolCall, mcpServerName } = useMemo(() => {
     if (typeof name !== 'string') {
       return { function_name: '', domain: null, isMCPToolCall: false, mcpServerName: '' };
@@ -145,6 +176,9 @@ export default function ToolCall({
         : getToolDisplayLabel(function_name, localize, mcpServerNames),
     [name, function_name, isMCPToolCall, localize, mcpServerNames, mcpToolTitles],
   );
+  const plain = isMCPToolCall && startupConfig?.interface?.plainToolDetails === true;
+  const toolInfo = plain ? mcpToolInfo.get(name) : undefined;
+  const wording = plain ? toolCallWording(name, toolInfo, mcpReadOnlyTools) : undefined;
   const mcpIconMap = useMCPIconMap();
   const mcpIconUrl = isMCPToolCall ? mcpIconMap.get(mcpServerName) : undefined;
 
@@ -476,6 +510,7 @@ export default function ToolCall({
             durationMs={runStepDurationMs}
             toolPreparationDurationMs={toolPreparationDurationMs}
             toolExecutionDurationMs={toolExecutionDurationMs}
+            toolCallTimeLabel={wording ? localize(TIME_LABELS[wording]) : undefined}
             phaseStartAt={toolDispatchedAt ?? toolPreparationStartedAt}
             icon={
               <ToolIcon
@@ -502,7 +537,13 @@ export default function ToolCall({
                 'border-border-light bg-surface-secondary overflow-hidden rounded-lg border',
               )}
             >
-              <ToolCallInfo input={args ?? ''} output={output} />
+              <ToolCallInfo
+                input={args ?? ''}
+                output={output}
+                wording={wording}
+                failed={phase === 'failed'}
+                info={toolInfo}
+              />
             </div>
           )}
         </div>
