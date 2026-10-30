@@ -28,16 +28,20 @@ describe('humaniser', () => {
 
   test('prefers the MCP title, then the annotation title, then the humanised name', () => {
     expect(
-      friendlyToolTitle('email_send_client_email_mcp_workbench', { title: 'Send client email' }),
+      friendlyToolTitle('email_send_client_email_mcp_workbench', {
+        title: 'Send client email',
+        description: '',
+      }),
     ).toBe('Send client email');
     expect(
       friendlyToolTitle('email_send_client_email_mcp_workbench', {
+        description: '',
         annotations: { title: 'Send client email' },
       }),
     ).toBe('Send client email');
-    expect(friendlyToolTitle('email_send_client_email_mcp_workbench', { title: '  ' })).toBe(
-      'Email send client email',
-    );
+    expect(
+      friendlyToolTitle('email_send_client_email_mcp_workbench', { title: '  ', description: '' }),
+    ).toBe('Email send client email');
     expect(friendlyToolTitle('email_send_client_email_mcp_workbench')).toBe(
       'Email send client email',
     );
@@ -84,6 +88,7 @@ describe('argument formatter', () => {
     const rows = buildArgumentRows(
       { draft_id: 'd_8f3a2c', note: 'Looks good', send_copy: true, cc: undefined },
       {
+        description: '',
         parameters: {
           type: 'object',
           properties: {
