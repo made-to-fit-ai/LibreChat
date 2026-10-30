@@ -3097,6 +3097,9 @@ export const interfaceSchema = z
     /** Shows the generic disclaimer and policy links beneath the welcome screen's
      *  composer. A configured `customFooter` still renders when this is false. */
     landingFooter: z.boolean().optional(),
+    /** Shows a "Help" button in the chat header that explains each assistant, the
+     *  systems it reaches and example questions, for staff new to AI chat. */
+    helpGuide: z.boolean().optional(),
     mcpServers: mcpServersSchema.optional(),
     modelSelect: z.boolean().optional(),
     /** Set to false during a rolling upgrade, until every API replica supports title ownership and old title jobs drain. */
@@ -3415,6 +3418,7 @@ export const interfaceSchema = z
     mascot: true,
     landingHeading: 'entity',
     landingFooter: true,
+    helpGuide: false,
     remoteAgents: {
       use: false,
       create: false,

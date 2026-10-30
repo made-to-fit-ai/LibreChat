@@ -2,7 +2,7 @@ import { useState, memo, useRef } from 'react';
 import { useSetAtom } from 'jotai';
 import { useSetRecoilState } from 'recoil';
 import * as Menu from '@ariakit/react/menu';
-import { GearIcon, Avatar } from '@librechat/client';
+import { GearIcon, Avatar, TooltipAnchor } from '@librechat/client';
 import {
   Archive,
   ChevronRight,
@@ -117,6 +117,14 @@ function AccountSettings({ collapsed = false }: { collapsed?: boolean }) {
       <Menu.MenuButton
         ref={accountSettingsButtonRef}
         aria-label={localize('com_nav_account_settings')}
+        /** The rail shows only the avatar, so name the menu on hover and focus. */
+        render={
+          <TooltipAnchor
+            side={railSide}
+            description={localize('com_nav_account_settings')}
+            render={<button type="button" />}
+          />
+        }
         data-testid="nav-user"
         className={
           collapsed

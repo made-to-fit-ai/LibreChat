@@ -82,6 +82,17 @@ jest.mock('~/store', () => {
   };
 });
 
+const mockHandleNewChatClick = jest.fn((event: React.MouseEvent) => event.preventDefault());
+const mockSmallScreen = { current: false };
+jest.mock('~/hooks/Conversations/useNewChat', () => () => ({
+  handleNewChatClick: mockHandleNewChatClick,
+}));
+jest.mock('~/hooks/Nav/useDrawerViewport', () => () => mockSmallScreen.current);
+jest.mock('~/hooks/useKeyboardShortcuts', () => ({
+  ...jest.requireActual('~/hooks/useKeyboardShortcuts'),
+  useShortcutAriaKey: () => undefined,
+}));
+
 jest.mock('~/hooks', () => ({
   __esModule: true,
   useLocalize: () => (key: string) => key,
@@ -610,5 +621,28 @@ describe('ConversationsSection shared scroll surface', () => {
     });
 
     expect(surface!.scrollTop).toBe(0);
+  });
+});
+
+describe('ConversationsSection New chat row', () => {
+  afterEach(() => {
+    mockSmallScreen.current = false;
+    mockHandleNewChatClick.mockClear();
+  });
+
+  it('starts a new chat from the labelled row on desktop', async () => {
+    renderSection();
+    await settleRenders();
+
+    fireEvent.click(screen.getByTestId('nav-new-chat-row'));
+    expect(mockHandleNewChatClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves the row out on a small screen', async () => {
+    mockSmallScreen.current = true;
+    renderSection();
+    await settleRenders();
+
+    expect(screen.queryByTestId('nav-new-chat-row')).not.toBeInTheDocument();
   });
 });

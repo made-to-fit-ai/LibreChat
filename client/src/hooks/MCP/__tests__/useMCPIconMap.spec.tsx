@@ -1,11 +1,19 @@
 import { act } from '@testing-library/react';
 import { renderHook } from '@testing-library/react';
-import { useMCPIconMap, useMCPServerNames, useMCPServerTitles } from '../useMCPIconMap';
+import {
+  useMCPIconMap,
+  useMCPToolTitles,
+  useMCPServerNames,
+  useMCPServerTitles,
+  useMCPReadOnlyTools,
+} from '../useMCPIconMap';
 import { activateCatalog, resetCatalogWarmup } from '../../useCatalogWarmup';
 
 const mockUseMCPServersQuery = jest.fn();
+const mockUseMCPToolsQuery = jest.fn();
 jest.mock('~/data-provider', () => ({
   useMCPServersQuery: (config: unknown) => mockUseMCPServersQuery(config),
+  useMCPToolsQuery: (config: unknown) => mockUseMCPToolsQuery(config),
 }));
 
 describe('useMCPIconMap', () => {
@@ -48,5 +56,44 @@ describe('useMCPIconMap', () => {
     });
     const { result } = renderHook(() => useMCPServerTitles());
     expect([...result.current]).toEqual([['accounting_insights', 'Practice insights']]);
+  });
+});
+
+describe('MCP tool catalog hooks', () => {
+  beforeEach(() => {
+    mockUseMCPToolsQuery.mockReturnValue({
+      data: {
+        servers: {
+          xestro: {
+            tools: [
+              { pluginKey: 'list_mcp_xestro', title: '  List patients ', annotations: {} },
+              {
+                pluginKey: 'book_mcp_xestro',
+                annotations: { title: 'Book appointment', readOnlyHint: false },
+              },
+            ],
+          },
+          billing: {
+            tools: [
+              { pluginKey: 'sum_mcp_billing', annotations: { readOnlyHint: true } },
+              { pluginKey: 'blank_mcp_billing', title: '   ' },
+            ],
+          },
+        },
+      },
+    });
+  });
+
+  it('maps trimmed tool titles by plugin key, falling back to the annotation title', () => {
+    const { result } = renderHook(() => useMCPToolTitles());
+    expect([...result.current]).toEqual([
+      ['list_mcp_xestro', 'List patients'],
+      ['book_mcp_xestro', 'Book appointment'],
+    ]);
+  });
+
+  it('collects only tools whose server marks them read-only', () => {
+    const { result } = renderHook(() => useMCPReadOnlyTools());
+    expect([...result.current]).toEqual(['sum_mcp_billing']);
   });
 });

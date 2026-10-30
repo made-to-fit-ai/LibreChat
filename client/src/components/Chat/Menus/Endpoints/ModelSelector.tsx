@@ -18,9 +18,12 @@ import { useLocalize } from '~/hooks';
 
 const defaultInterface = getConfigDefaults().interface;
 
-function ModelSelectorContent() {
+/** `specsOnly`: the deployment offers only its configured assistants (model specs), so the
+ *  picker is named for choosing an assistant rather than a model. */
+function ModelSelectorContent({ specsOnly }: { specsOnly: boolean }) {
   const localize = useLocalize();
-  const modelSelectorHint = useShortcutHint('openModelSelector', localize('com_ui_select_model'));
+  const selectLabel = localize(specsOnly ? 'com_ui_select_assistant' : 'com_ui_select_model');
+  const modelSelectorHint = useShortcutHint('openModelSelector', selectLabel);
   const modelSelectorAriaKey = useShortcutAriaKey('openModelSelector');
 
   const {
@@ -67,14 +70,14 @@ function ModelSelectorContent() {
 
   const trigger = (
     <TooltipAnchor
-      aria-label={localize('com_ui_select_model')}
+      aria-label={selectLabel}
       description={modelSelectorHint}
       render={
         <button
           data-testid="model-selector-button"
           aria-keyshortcuts={modelSelectorAriaKey}
           className="border-border-chrome bg-presentation text-text-primary hover:bg-surface-active-alt rounded-theme-control my-1 flex h-9 max-w-full items-center gap-2 border px-3 py-2 text-sm"
-          aria-label={localize('com_ui_select_model')}
+          aria-label={selectLabel}
         >
           {selectedIcon && React.isValidElement(selectedIcon) && (
             <div className="flex shrink-0 items-center justify-center overflow-hidden">
@@ -100,7 +103,9 @@ function ModelSelectorContent() {
         }}
         onSearch={(value) => setSearchValue(value)}
         combobox={<input id="model-search" placeholder=" " />}
-        comboboxLabel={localize('com_endpoint_search_models')}
+        comboboxLabel={localize(
+          specsOnly ? 'com_ui_search_assistants' : 'com_endpoint_search_models',
+        )}
         trigger={trigger}
       >
         {searchResults ? (
@@ -141,7 +146,7 @@ export default function ModelSelector({ startupConfig }: ModelSelectorProps) {
   return (
     <ModelSelectorChatProvider>
       <ModelSelectorProvider startupConfig={startupConfig}>
-        <ModelSelectorContent />
+        <ModelSelectorContent specsOnly={interfaceConfig.modelSelect === false} />
       </ModelSelectorProvider>
     </ModelSelectorChatProvider>
   );

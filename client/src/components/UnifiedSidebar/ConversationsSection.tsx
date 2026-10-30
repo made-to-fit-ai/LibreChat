@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, useMemo, memo, useRef } from 'react';
 import { useAtomValue } from 'jotai';
 import { useRecoilValue } from 'recoil';
+import { SquarePen } from 'lucide-react';
+import { Button } from '@librechat/client';
 import type { InfiniteQueryObserverResult } from '@tanstack/react-query';
 import type { ConversationListResponse } from 'librechat-data-provider';
 import type { List } from 'react-virtualized';
@@ -28,9 +30,11 @@ import ProjectsSection from '~/components/Conversations/ProjectsSection';
 import ChatFilterMenu from '~/components/Conversations/ChatFilterMenu';
 import PinnedSection from '~/components/Conversations/PinnedSection';
 import ProjectNamesProvider from '~/Providers/ProjectNamesContext';
+import { useShortcutAriaKey } from '~/hooks/useKeyboardShortcuts';
 import useDrawerViewport from '~/hooks/Nav/useDrawerViewport';
 import useSidebarToggle from '~/hooks/Nav/useSidebarToggle';
 import { Conversations } from '~/components/Conversations';
+import useNewChat from '~/hooks/Conversations/useNewChat';
 import { cn, collectPinnedConversations } from '~/utils';
 import SearchBar from '~/components/Nav/SearchBar';
 import store from '~/store';
@@ -42,6 +46,8 @@ const ConversationsSection = memo(() => {
   const isSmallScreen = useDrawerViewport();
   const { setSidebarOpen } = useSidebarToggle();
   const { isAuthenticated } = useAuthContext();
+  const { handleNewChatClick } = useNewChat();
+  const newChatAriaKey = useShortcutAriaKey('newChat');
   useTitleGeneration(isAuthenticated);
 
   const [isChatsExpanded, setIsChatsExpanded] = useLocalStorage('chatsExpanded', true);
@@ -227,6 +233,26 @@ const ConversationsSection = memo(() => {
         {/* The search field owns this row alone; filtering and ordering moved beside the
           Chats heading, where the list they act on is labelled. On mobile the field
           itself lives in the drawer's bottom bar, within thumb reach. */}
+        {/* A named row beside the rail's icon, so starting over never depends on
+          reading a tooltip. Its name differs from the icon's "New chat" so the two
+          links stay distinguishable. Mobile keeps its own button in the drawer header. */}
+        {!isSmallScreen && (
+          <div className="px-2 pb-1">
+            <Button asChild variant="nav" size="row" className="w-full justify-start">
+              <a
+                href="/c/new"
+                data-testid="nav-new-chat-row"
+                aria-keyshortcuts={newChatAriaKey}
+                onClick={handleNewChatClick}
+              >
+                <SquarePen className="text-text-primary size-5 shrink-0" aria-hidden="true" />
+                <span className="text-text-primary text-sm font-medium">
+                  {localize('com_ui_start_chat')}
+                </span>
+              </a>
+            </Button>
+          </div>
+        )}
         {!isSmallScreen && search.enabled && (
           <div className="flex items-center px-3">
             <SearchBar isSmallScreen={isSmallScreen} />

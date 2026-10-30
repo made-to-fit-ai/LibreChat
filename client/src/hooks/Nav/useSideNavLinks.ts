@@ -19,6 +19,7 @@ import {
   isAssistantsEndpoint,
 } from 'librechat-data-provider';
 import type { TInterfaceConfig, TEndpointsConfig } from 'librechat-data-provider';
+import type { MCPServerDefinition } from '~/hooks/MCP/useMCPServerManager';
 import type { NavLink } from '~/common';
 import {
   useAgentCapabilities,
@@ -35,6 +36,20 @@ import Parameters from '~/components/SidePanel/Parameters/Panel';
 import { MemoryPanel } from '~/components/SidePanel/Memories';
 import { PromptsAccordion } from '~/components/Prompts';
 import { SkillsAccordion } from '~/components/Skills';
+
+/**
+ * Without create access the MCP panel is only worth a rail slot when a server is the user's to
+ * pick or set up: offered in chat, or needing their sign-in or their own values. Servers an
+ * administrator pins to a model spec and hides from chat (`chatMenu: false`) need nothing there.
+ */
+export function hasUserFacingMCPServer(servers: MCPServerDefinition[] | undefined): boolean {
+  return (servers ?? []).some(
+    ({ config }) =>
+      config.chatMenu !== false ||
+      config.requiresOAuth === true ||
+      Object.keys(config.customUserVars ?? {}).length > 0,
+  );
+}
 
 export default function useSideNavLinks({
   hidePanel,
@@ -211,7 +226,7 @@ export default function useSideNavLinks({
     }
 
     if (
-      (hasAccessToUseMCPSettings && availableMCPServers && availableMCPServers.length > 0) ||
+      (hasAccessToUseMCPSettings && hasUserFacingMCPServer(availableMCPServers)) ||
       hasAccessToCreateMCP
     ) {
       links.push({

@@ -94,6 +94,7 @@ export async function loadDefaultInterface({
     customWelcome: interfaceConfig?.customWelcome ?? defaults.customWelcome,
     landingHeading: interfaceConfig?.landingHeading ?? defaults.landingHeading,
     landingFooter: interfaceConfig?.landingFooter ?? defaults.landingFooter,
+    helpGuide: interfaceConfig?.helpGuide ?? defaults.helpGuide,
     autoSubmitFromUrl: interfaceConfig?.autoSubmitFromUrl ?? defaults.autoSubmitFromUrl,
     colorModeFromUrl: interfaceConfig?.colorModeFromUrl ?? defaults.colorModeFromUrl,
     buildInfo: interfaceConfig?.buildInfo ?? defaults.buildInfo,

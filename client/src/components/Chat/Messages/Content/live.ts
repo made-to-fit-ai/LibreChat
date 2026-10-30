@@ -105,15 +105,28 @@ export function needsReader(part: TMessageContentParts | undefined): boolean {
  */
 type ToolLine = { text: string; generic: boolean };
 
+/** Server titles, so a live line names "Xero" rather than its config key, and the read-only
+ *  tools whose calls read as "Checking Xero" rather than a generic run. */
+export type MCPLabels = {
+  serverTitles: ReadonlyMap<string, string>;
+  readOnlyTools: ReadonlySet<string>;
+};
+
 function toolCallLine(
   part: TMessageContentParts,
   toolCall: LiveToolCall,
   localize: Localize,
   serverNames: readonly string[],
   span: SpanSummary,
+  mcpLabels?: MCPLabels,
 ): ToolLine {
   const intent = getToolCallIntent(toolCall.args);
-  const label = getToolDisplayLabel(toolCall.name ?? '', localize, serverNames);
+  const label = getToolDisplayLabel(
+    toolCall.name ?? '',
+    localize,
+    serverNames,
+    mcpLabels?.serverTitles,
+  );
   /** The verdict comes from the resolver the group header uses, so a collapsed
    *  row can never read as a success while the card it hides shows a failure
    *  or a stop — whichever channel reported it. */
@@ -162,6 +175,15 @@ function toolCallLine(
   }
   if (!label) {
     return { text: localize('com_assistants_running_action'), generic: true };
+  }
+  /** A read-only MCP call's label is the system it reaches, so it reads as a lookup there. */
+  if (mcpLabels?.readOnlyTools.has(toolCall.name ?? '') === true) {
+    return {
+      text: localize(meta?.hasOutput === true ? 'com_ui_checked_var' : 'com_ui_checking_var', {
+        0: label,
+      }),
+      generic: true,
+    };
   }
   return {
     text: localize(
@@ -298,6 +320,7 @@ function newestLine(
   serverNames: readonly string[],
   span: SpanSummary,
   preferLabels: boolean,
+  mcpLabels?: MCPLabels,
 ): Pick<
   LiveActivity,
   'text' | 'source' | 'pendingToolCallId' | 'comboCount' | 'isBackgroundTaskCheck'
@@ -365,7 +388,7 @@ function newestLine(
       continue;
     }
     if (toolCall != null) {
-      const line = toolCallLine(part, toolCall, localize, serverNames, span);
+      const line = toolCallLine(part, toolCall, localize, serverNames, span, mcpLabels);
       return {
         text: line.text,
         /** Provider ids repeat across batches, so the position is part of the
@@ -410,10 +433,11 @@ export function getLiveActivity(
    *  of those is the text of a row. For a header whose rows are on screen,
    *  where quoting any of them back is repetition. */
   preferLabels = false,
+  mcpLabels?: MCPLabels,
 ): LiveActivity {
   const span = summarizeSpan(parts, attachmentsById);
   return {
-    ...newestLine(parts, localize, serverNames, span, preferLabels),
+    ...newestLine(parts, localize, serverNames, span, preferLabels, mcpLabels),
     outcome: { failed: span.failed, cancelled: span.cancelled },
     total: span.total,
     iconNames: getSpanIconNames(parts),

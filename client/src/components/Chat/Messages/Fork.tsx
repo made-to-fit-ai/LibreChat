@@ -5,7 +5,7 @@ import { VisuallyHidden } from '@ariakit/react';
 import { GitFork, InfoIcon } from 'lucide-react';
 import { ForkOptions } from 'librechat-data-provider';
 import { GitCommit, GitBranchPlus, ListTree } from 'lucide-react';
-import { Button, Label, Checkbox, useToastContext } from '@librechat/client';
+import { Button, Label, Checkbox, TooltipAnchor, useToastContext } from '@librechat/client';
 import { TranslationKeys, useLocalize, useNavigateToConvo } from '~/hooks';
 import { useForkConvoMutation } from '~/data-provider';
 import { hoverButtonClasses } from './styles';
@@ -330,29 +330,34 @@ function Fork({
       <Ariakit.PopoverAnchor
         store={popoverStore}
         render={
-          <Button
-            variant="ghost"
-            size="icon"
-            className={buttonStyle}
-            onClick={(e) => {
-              if (rememberGlobal) {
-                e.preventDefault();
-                forkConvo.mutate({
-                  messageId,
-                  splitAtTarget,
-                  conversationId,
-                  option: forkSetting,
-                  latestMessageId: getLatestMessageId?.(),
-                });
-              } else {
-                popoverStore.toggle();
-              }
-            }}
-            type="button"
-            aria-label={localize('com_ui_fork_open_menu')}
-          >
-            <GitFork className="size-[1.1875rem]" aria-hidden="true" />
-          </Button>
+          <TooltipAnchor
+            description={localize('com_ui_fork_open_menu')}
+            render={
+              <Button
+                variant="ghost"
+                size="icon"
+                className={buttonStyle}
+                onClick={(e) => {
+                  if (rememberGlobal) {
+                    e.preventDefault();
+                    forkConvo.mutate({
+                      messageId,
+                      splitAtTarget,
+                      conversationId,
+                      option: forkSetting,
+                      latestMessageId: getLatestMessageId?.(),
+                    });
+                  } else {
+                    popoverStore.toggle();
+                  }
+                }}
+                type="button"
+                aria-label={localize('com_ui_fork_open_menu')}
+              >
+                <GitFork className="size-[1.1875rem]" aria-hidden="true" />
+              </Button>
+            }
+          />
         }
       />
       <Ariakit.Popover

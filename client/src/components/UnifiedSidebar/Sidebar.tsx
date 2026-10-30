@@ -52,6 +52,8 @@ function Sidebar({
           )}
           style={{ transition: expanded ? 'opacity 200ms ease 80ms' : 'opacity 150ms ease' }}
           aria-hidden={!expanded}
+          /* Hidden from readers must also mean out of the tab order (axe aria-hidden-focus). */
+          inert={expanded ? undefined : ''}
         >
           <SidePanelNav links={links} />
         </nav>
