@@ -1,8 +1,8 @@
 import { useState, useId } from 'react';
 import * as Ariakit from '@ariakit/react';
 import { PermissionTypes, Permissions } from 'librechat-data-provider';
-import { DropdownPopup, TooltipAnchor, Button } from '@librechat/client';
 import { BookmarkFilledIcon, BookmarkIcon } from '@radix-ui/react-icons';
+import { DropdownPopup, TooltipAnchor, NewChatIcon, Button } from '@librechat/client';
 import { Ellipsis, PlusCircle, HatGlasses, Check, ChartNoAxesGantt } from 'lucide-react';
 import type { TStartupConfig } from 'librechat-data-provider';
 import type { TraceControl } from '~/components/Chat/Trace';
@@ -28,6 +28,7 @@ export default function HeaderMenu({
   className,
   readOnly = false,
   pullRequestConversationId,
+  onNewChat,
 }: {
   startupConfig?: TStartupConfig;
   /** A read-only subagent thread offers share and export but no edits to the chat. */
@@ -37,6 +38,8 @@ export default function HeaderMenu({
   /** The saved conversation whose pull request this menu offers; none for a new chat or a child thread. */
   pullRequestConversationId?: string;
   className?: string;
+  /** The header's `useNewChat().startNewChat`, shared with its standalone icon. */
+  onNewChat: () => void;
 }) {
   const localize = useLocalize();
   const menuId = useId();
@@ -71,18 +74,28 @@ export default function HeaderMenu({
   const showTemporary =
     (hasAccessToTemporaryChat === true || temporary.isEnforced) && temporary.show;
 
-  const items: t.MenuItemProps[] = [];
+  /** Always offered, even on a new chat where the header skips its standalone icon. */
+  const items: t.MenuItemProps[] = [
+    {
+      id: 'header-new-chat',
+      label: localize('com_ui_new_chat'),
+      icon: <NewChatIcon className="size-4" />,
+      onClick: onNewChat,
+    },
+  ];
 
   /** `separate` marks an entry as *being* a divider, so it needs its own slot. */
   const pushGroup = (...group: t.MenuItemProps[]) => {
-    if (items.length > 0) {
-      items.push({ separate: true });
+    if (group.length === 0) {
+      return;
     }
-    items.push(...group);
+    items.push({ separate: true }, ...group);
   };
 
+  const chatActions: t.MenuItemProps[] = [];
+
   if (showBookmarks) {
-    items.push({
+    chatActions.push({
       id: 'header-bookmarks',
       label: localize('com_ui_bookmarks'),
       icon: bookmarks.hasBookmarks ? (
@@ -95,13 +108,15 @@ export default function HeaderMenu({
   }
 
   if (showCompare) {
-    items.push({
+    chatActions.push({
       id: 'header-compare',
       label: localize('com_ui_add_multi_conversation'),
       icon: <PlusCircle className="text-text-secondary size-4" />,
       onClick: multiConvo.addConversation,
     });
   }
+
+  pushGroup(...chatActions);
 
   if (trace?.show === true) {
     pushGroup({
@@ -136,10 +151,6 @@ export default function HeaderMenu({
       ),
       onClick: temporary.toggle,
     });
-  }
-
-  if (items.length === 0) {
-    return null;
   }
 
   /** Mirrors the desktop share button, which surfaces an active link in its tooltip. */

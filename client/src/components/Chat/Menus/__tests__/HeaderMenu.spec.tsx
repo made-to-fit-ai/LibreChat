@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import type { MenuItemProps } from '~/common';
 
 const mockAccess: Record<string, boolean> = {};
@@ -40,6 +40,7 @@ jest.mock('~/components/Chat/PullRequest', () => ({
     return mockHookState.pullRequest;
   },
 }));
+const mockStartNewChat = jest.fn();
 jest.mock('~/hooks/Conversations/useMultiConvo', () => ({
   __esModule: true,
   default: () => mockHookState.multiConvo,
@@ -81,6 +82,7 @@ jest.mock('@librechat/client', () => ({
     <button {...props}>{children}</button>
   ),
   TooltipAnchor: ({ render: node }: { render: React.ReactNode }) => node,
+  NewChatIcon: () => null,
   DropdownPopup: ({ trigger, items }: { trigger: React.ReactNode; items: MenuItemProps[] }) => (
     <div>
       {trigger}
@@ -92,7 +94,7 @@ jest.mock('@librechat/client', () => ({
               <li key={index} data-kind="separator" />
             ) : (
               <li key={index} data-kind="item" data-sub={item.subItems != null}>
-                {item.label}
+                <button onClick={item.onClick}>{item.label}</button>
               </li>
             ),
           )}
@@ -112,6 +114,7 @@ const labels = () =>
 describe('HeaderMenu', () => {
   beforeEach(() => {
     mockBookmarkArgs.length = 0;
+    mockStartNewChat.mockClear();
     mockPullRequestArgs.length = 0;
     mockHookState.pullRequest = { item: undefined, dialog: null };
     for (const key of Object.keys(mockAccess)) {
@@ -126,10 +129,11 @@ describe('HeaderMenu', () => {
   });
 
   it('collapses every secondary action behind one trigger', () => {
-    render(<HeaderMenu />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} />);
 
     expect(screen.getByTestId('header-overflow-menu')).toBeInTheDocument();
     expect(labels()).toEqual([
+      'com_ui_new_chat',
       'com_ui_bookmarks',
       'com_ui_add_multi_conversation',
       'share',
@@ -144,9 +148,10 @@ describe('HeaderMenu', () => {
       dialog: <div data-testid="pull-request-dialog" />,
     };
 
-    render(<HeaderMenu pullRequestConversationId="convo-1" />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} pullRequestConversationId="convo-1" />);
 
     expect(labels()).toEqual([
+      'com_ui_new_chat',
       'com_ui_bookmarks',
       'com_ui_add_multi_conversation',
       'PR #7',
@@ -159,14 +164,14 @@ describe('HeaderMenu', () => {
   });
 
   it('leaves the menu unchanged when the chat has no pull request', () => {
-    render(<HeaderMenu pullRequestConversationId="convo-1" />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} pullRequestConversationId="convo-1" />);
 
     expect(labels()).not.toContain('PR #7');
     expect(screen.queryByTestId('pull-request-dialog')).not.toBeInTheDocument();
   });
 
   it('asks for no pull request when the header names no conversation', () => {
-    render(<HeaderMenu />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} />);
 
     expect(mockPullRequestArgs.every((id) => id === '')).toBe(true);
   });
@@ -178,60 +183,76 @@ describe('HeaderMenu', () => {
     mockHookState.exportShare.show = false;
     mockHookState.pullRequest = { item: { label: 'PR #7' }, dialog: null };
 
-    render(<HeaderMenu pullRequestConversationId="convo-1" />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} pullRequestConversationId="convo-1" />);
 
-    expect(labels()).toEqual(['PR #7']);
+    expect(labels()).toEqual(['com_ui_new_chat', 'PR #7']);
     expect(rows()[0]).toHaveAttribute('data-kind', 'item');
   });
 
   it('keeps every action reachable when groups are divided', () => {
-    render(<HeaderMenu />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} />);
 
     /** A divider is its own entry; flagging an action as one deletes it. */
     expect(labels()).toContain('share');
     expect(labels()).toContain('com_ui_temporary');
-    expect(rows().filter((node) => node.getAttribute('data-kind') === 'separator')).toHaveLength(2);
+    expect(rows().filter((node) => node.getAttribute('data-kind') === 'separator')).toHaveLength(3);
   });
 
   it('nests bookmarks rather than flattening every tag into the top level', () => {
-    render(<HeaderMenu />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} />);
 
-    expect(rows()[0]).toHaveAttribute('data-sub', 'true');
+    expect(rows()[2]).toHaveAttribute('data-sub', 'true');
   });
 
-  it('renders nothing when no action survives its gate', () => {
+  it('always offers a new chat, even when no other action survives its gate', () => {
     mockHookState.multiConvo.show = false;
     mockHookState.temporary.show = false;
     mockHookState.bookmarks.show = false;
     mockHookState.exportShare.show = false;
 
-    render(<HeaderMenu />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} />);
 
-    expect(screen.queryByTestId('header-overflow-menu')).not.toBeInTheDocument();
+    expect(screen.getByTestId('header-overflow-menu')).toBeInTheDocument();
+    expect(labels()).toEqual(['com_ui_new_chat']);
+  });
+
+  it('starts a new chat from the menu', () => {
+    render(<HeaderMenu onNewChat={mockStartNewChat} />);
+
+    fireEvent.click(screen.getByText('com_ui_new_chat'));
+
+    expect(mockStartNewChat).toHaveBeenCalledTimes(1);
   });
 
   it('drops actions the user lacks permission for', () => {
     mockAccess.BOOKMARKS = false;
     mockAccess.MULTI_CONVO = false;
 
-    render(<HeaderMenu />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} />);
 
-    expect(labels()).toEqual(['share', 'export', 'com_ui_temporary']);
+    expect(labels()).toEqual(['com_ui_new_chat', 'share', 'export', 'com_ui_temporary']);
   });
 
-  it('never opens with a leading divider when earlier groups are gated out', () => {
+  it('leaves no empty group behind when its actions are gated out', () => {
     mockAccess.BOOKMARKS = false;
     mockAccess.MULTI_CONVO = false;
 
-    render(<HeaderMenu />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} />);
 
-    expect(rows()[0]).toHaveAttribute('data-kind', 'item');
+    expect(rows().map((node) => node.getAttribute('data-kind'))).toEqual([
+      'item',
+      'separator',
+      'item',
+      'item',
+      'separator',
+      'item',
+    ]);
   });
 
   it('does not query bookmark tags without the bookmark permission', () => {
     mockAccess.BOOKMARKS = false;
 
-    render(<HeaderMenu />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} />);
 
     expect(mockBookmarkArgs.every((args) => args.enabled === false)).toBe(true);
   });
@@ -239,7 +260,7 @@ describe('HeaderMenu', () => {
   it('keeps surfacing an active shared link on the collapsed trigger', () => {
     mockHookState.exportShare.hasSharedLink = true;
 
-    render(<HeaderMenu />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} />);
 
     /** Distinct from the desktop menu's indicator; both are mounted at once. */
     expect(screen.getByTestId('header-menu-shared-link-indicator')).toBeInTheDocument();
@@ -250,12 +271,15 @@ describe('HeaderMenu', () => {
   });
 
   it('offers the trace in its own group only when the header says one is available', () => {
-    const { rerender } = render(<HeaderMenu trace={{ show: false, open: jest.fn() }} />);
+    const { rerender } = render(
+      <HeaderMenu onNewChat={mockStartNewChat} trace={{ show: false, open: jest.fn() }} />,
+    );
     expect(labels()).not.toContain('com_ui_trace_view');
 
-    rerender(<HeaderMenu trace={{ show: true, open: jest.fn() }} />);
+    rerender(<HeaderMenu onNewChat={mockStartNewChat} trace={{ show: true, open: jest.fn() }} />);
 
     expect(labels()).toEqual([
+      'com_ui_new_chat',
       'com_ui_bookmarks',
       'com_ui_add_multi_conversation',
       'com_ui_trace_view',
@@ -263,7 +287,7 @@ describe('HeaderMenu', () => {
       'export',
       'com_ui_temporary',
     ]);
-    expect(rows().filter((node) => node.getAttribute('data-kind') === 'separator')).toHaveLength(3);
+    expect(rows().filter((node) => node.getAttribute('data-kind') === 'separator')).toHaveLength(4);
   });
 
   it('keeps the trace reachable when it is the only action left', () => {
@@ -272,16 +296,16 @@ describe('HeaderMenu', () => {
     mockHookState.bookmarks.show = false;
     mockHookState.exportShare.show = false;
 
-    render(<HeaderMenu trace={{ show: true, open: jest.fn() }} />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} trace={{ show: true, open: jest.fn() }} />);
 
-    expect(labels()).toEqual(['com_ui_trace_view']);
+    expect(labels()).toEqual(['com_ui_new_chat', 'com_ui_trace_view']);
     expect(rows()[0]).toHaveAttribute('data-kind', 'item');
   });
 
   it('shows temporary chat as active to sighted users, not just assistive tech', () => {
     mockHookState.temporary.isTemporary = true;
 
-    render(<HeaderMenu />);
+    render(<HeaderMenu onNewChat={mockStartNewChat} />);
 
     const temporaryRow = rows().find((node) => node.textContent === 'com_ui_temporary');
     expect(temporaryRow).toBeDefined();

@@ -13,6 +13,7 @@ import { OpenSidebar, PresetsMenu, NewChat, HeaderMenu } from './Menus';
 import { TemporaryChat, TemporaryChatIndicator } from './TemporaryChat';
 import useDrawerViewport from '~/hooks/Nav/useDrawerViewport';
 import ModelSelector from './Menus/Endpoints/ModelSelector';
+import useNewChat from '~/hooks/Conversations/useNewChat';
 import { BackgroundTasksButton } from './BackgroundTasks';
 import { isCodeConversation } from './PullRequest/code';
 import { TraceButton, useTraceControl } from './Trace';
@@ -42,6 +43,7 @@ function Header({
   const navVisible = useRecoilValue(store.sidebarExpanded);
   const isSubmitting = useIsSubmitting(0);
   const isSmallScreen = useDrawerViewport();
+  const { startNewChat, handleNewChatClick } = useNewChat();
 
   /** The mobile row only offers a new chat when there is one to leave. Read
    *  from the route rather than the context conversation, which still holds the
@@ -135,7 +137,9 @@ function Header({
       <div className={cn('flex shrink-0 items-center gap-2', hiddenBehindNav)}>
         {showTemporaryChat && <TemporaryChatIndicator />}
         <HelpGuide />
-        {!isNewChat && <NewChat className={isSmallScreen ? undefined : 'hidden'} />}
+        {!isNewChat && (
+          <NewChat onClick={handleNewChatClick} className={isSmallScreen ? undefined : 'hidden'} />
+        )}
         {!isNewChat && parentConversationId == null && (
           <BackgroundTasksButton
             key={routeConversationId}
@@ -147,6 +151,7 @@ function Header({
           startupConfig={startupConfig}
           trace={trace}
           readOnly={readOnly}
+          onNewChat={startNewChat}
           pullRequestConversationId={showPullRequest ? routeConversationId : undefined}
           className={isSmallScreen ? undefined : 'hidden'}
         />

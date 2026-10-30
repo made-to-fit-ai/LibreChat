@@ -32,14 +32,32 @@ function hints(state: Partial<ComposerHintState> = {}, index = 0) {
 const description = (index = 0) => document.getElementById(composerHintId(index));
 
 describe('composer hints', () => {
+  it('shows the modifier send key while focused with text when the lever is on', () => {
+    render(<Hints {...baseState} enterToSend={false} sendKeyHint focused index={0} />);
+    expect(screen.getByTestId('composer-send-hint')).toHaveTextContent('Ctrl+⏎ to send');
+  });
+
+  it.each([{ isSubmitting: true }, { isSubmitting: true, duringRunActive: true }])(
+    'hides the visible send key during a run (%j)',
+    (state) => {
+      render(<Hints {...baseState} {...state} sendKeyHint focused index={0} />);
+      expect(screen.queryByTestId('composer-send-hint')).not.toBeInTheDocument();
+    },
+  );
+
+  it('shows nothing visible without text', () => {
+    render(<Hints {...baseState} hasText={false} sendKeyHint focused index={0} />);
+    expect(screen.queryByTestId('composer-send-hint')).not.toBeInTheDocument();
+  });
+
   it.each([
     {},
     { hasText: false },
     { isSubmitting: true, duringRunActive: true },
     { answerModeActive: true },
-  ])('never renders a visible hint row (%j)', (state) => {
+  ])('renders no visible hint with the lever off (%j)', (state) => {
     render(hints(state));
-    expect(screen.queryByTestId('composer-hints')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('composer-send-hint')).not.toBeInTheDocument();
     expect(description()).toHaveClass('sr-only');
   });
 

@@ -3103,6 +3103,10 @@ export const interfaceSchema = z
     /** Shows an expanded MCP tool step's arguments as labelled rows, with plain
      *  wording and its raw output behind a disclosure, for non-technical staff. */
     plainToolDetails: z.boolean().optional(),
+    /** Shows the composer's send key (⌘/Ctrl+Enter, or Enter) beneath it while it
+     *  is focused and holds text, in a row reserved under the composer. Hidden
+     *  below `sm`. Screen readers always get it as a description. */
+    composerSendHint: z.boolean().optional(),
     mcpServers: mcpServersSchema.optional(),
     modelSelect: z.boolean().optional(),
     /** Set to false during a rolling upgrade, until every API replica supports title ownership and old title jobs drain. */
@@ -3423,6 +3427,7 @@ export const interfaceSchema = z
     landingFooter: true,
     helpGuide: false,
     plainToolDetails: false,
+    composerSendHint: false,
     remoteAgents: {
       use: false,
       create: false,
