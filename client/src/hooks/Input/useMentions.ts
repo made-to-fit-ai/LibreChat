@@ -290,5 +290,6 @@ export default function useMentions({
     modelsConfig,
     endpointsConfig,
     assistantListMap,
+    specsOnly: interfaceConfig.modelSelect === false,
   };
 }

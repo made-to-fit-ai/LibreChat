@@ -45,6 +45,15 @@ describe('composeHint', () => {
     expect(hint({ idleActions: { prompts: false, mentions: false, attach: false } })).toBe('');
   });
 
+  it('names the @ target as assistants when only assistants are offered', () => {
+    expect(hint({ idleActions: { prompts: false, mentions: true, attach: false } })).toBe(
+      'com_ui_composer_hint_mentions',
+    );
+    expect(
+      hint({ idleActions: { prompts: false, mentions: true, attach: false, specsOnly: true } }),
+    ).toBe('com_ui_composer_hint_mentions_assistants');
+  });
+
   it('switches to send/newline once there is text', () => {
     expect(hint({ hasText: true })).toBe('com_ui_composer_hint_typing');
   });

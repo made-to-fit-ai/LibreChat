@@ -1,4 +1,4 @@
-import { memo, useState, useRef, useEffect } from 'react';
+import { memo, useId, useState, useRef, useEffect } from 'react';
 import { AutoSizer, List } from 'react-virtualized';
 import { EModelEndpoint } from 'librechat-data-provider';
 import { useRecoilValue, useSetRecoilState } from 'recoil';
@@ -47,6 +47,7 @@ function MentionContent({
     modelsConfig,
     endpointsConfig,
     assistantListMap,
+    specsOnly,
   } = useMentions({ assistantMap: assistantsMap || {}, includeAssistants });
   const { onSelectMention } = useSelectMention({
     presets,
@@ -142,6 +143,9 @@ function MentionContent({
   }, []);
 
   const type = commandChar !== '@' ? 'add-convo' : 'mention';
+  const plainLanguage = specsOnly && type === 'mention';
+  const headingId = useId();
+  const showHeading = plainLanguage && options.length > 0;
   useEffect(() => {
     const currentActiveItem = document.getElementById(`${type}-item-${activeIndex}`);
     currentActiveItem?.scrollIntoView({ behavior: 'instant', block: 'nearest' });
@@ -183,9 +187,15 @@ function MentionContent({
   return (
     <div className="absolute bottom-28 z-10 w-full space-y-2">
       <div className="popover border-border-light bg-surface-secondary rounded-theme-popover border p-2 shadow-lg">
+        {showHeading && (
+          <div id={headingId} className="text-text-secondary px-2 pt-1 text-xs font-medium">
+            {localize('com_ui_mention_assistant')}
+          </div>
+        )}
         <Input
           ref={initInputRef}
-          placeholder={localize(placeholder)}
+          placeholder={localize(plainLanguage ? 'com_ui_search_assistants' : placeholder)}
+          aria-labelledby={showHeading ? headingId : undefined}
           className="bg-surface-secondary mb-1 h-auto w-full rounded-none border-0 p-2"
           autoComplete="off"
           value={searchValue}
