@@ -34,6 +34,7 @@ import type {
   ParkedSteerClaim,
   ScheduleCleanupScope,
   ScheduleProviderOwner,
+  InterruptedGenerationRecorder,
 } from '~/stream/interfaces/IJobStore';
 import type { EarlyBufferOverflowState } from '../../types/earlyBufferRecovery';
 import type { ResolvedAskUserQuestion } from '~/agents/hitl/resume';
@@ -64,6 +65,7 @@ import { instrumentIORedisClient, RedisUseCases } from '~/cache/redisTelemetry';
 import { RecoveredSteerPayloadMismatchError } from '~/stream/SteerRecovery';
 import { SCHEDULE_MCP_FAILURE_PATCH_LUA } from '../scheduleFailure';
 import { createCheckpointNamespace } from '~/stream/checkpoints';
+import { readInterruptedContent } from '~/stream/interrupted';
 import { createToolTimingTracker } from '~/agents/toolTiming';
 import { evalScript } from '~/cache/redisScript';
 
@@ -1911,6 +1913,7 @@ export class RedisJobStore implements IJobStoreV2 {
 
   private redis: Redis | Cluster;
   private cleanupInterval: NodeJS.Timeout | null = null;
+  private interruptedGenerationRecorder?: InterruptedGenerationRecorder;
   private cleanupMembershipReady?: Promise<void>;
   private ttl: typeof DEFAULT_TTL;
   /** Coalescable chunk appends awaiting their window flush, per stream */
@@ -1961,6 +1964,10 @@ export class RedisJobStore implements IJobStoreV2 {
     };
     // Detect cluster mode using ioredis's isCluster property
     this.isCluster = (redis as Cluster).isCluster === true;
+  }
+
+  setInterruptedGenerationRecorder(recorder?: InterruptedGenerationRecorder): void {
+    this.interruptedGenerationRecorder = recorder;
   }
 
   async initialize(): Promise<void> {
@@ -3741,6 +3748,15 @@ export class RedisJobStore implements IJobStoreV2 {
           const liveSince = job.lastActiveAt ?? job.createdAt;
           if (now - liveSince > this.ttl.running * 1000) {
             logger.warn(`[RedisJobStore] Cleaning up stale job: ${streamId}`);
+            // A retained schedule job keeps its own durable error outcome. Every
+            // other stale job is deleted below, so its reply is recorded as
+            // interrupted first; a failed write leaves the job for the next sweep.
+            if (job.preserveForScheduleReconcile !== true && this.interruptedGenerationRecorder) {
+              await this.interruptedGenerationRecorder(
+                job,
+                await readInterruptedContent(this, job),
+              );
+            }
             // Re-check liveness + epoch, park queued steers, and delete same-slot
             // state in one script. A replacement cannot land in the old
             // park-then-unconditional-delete gap.

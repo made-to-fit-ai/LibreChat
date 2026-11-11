@@ -33,6 +33,7 @@ import type {
   PreemptMessage,
   SteerQueueItem,
   DetachedAgentEventActionStoreMode,
+  InterruptedGenerationRecorder,
 } from './interfaces/IJobStore';
 import type {
   EarlyBufferOverflowState,
@@ -980,6 +981,7 @@ class GenerationJobManagerClass {
    * durable work (scheduled chats, webhooks, etc.) a generation represents. */
   private approvalExpiredHandler: ApprovalExpiredHandler | undefined;
   private terminalHostActionHandler: TerminalHostActionHandler | undefined;
+  private interruptedGenerationRecorder: InterruptedGenerationRecorder | undefined;
 
   constructor(options?: GenerationJobManagerOptions) {
     const jobStore =
@@ -1098,8 +1100,10 @@ class GenerationJobManagerClass {
     setGenerationJobsInFlight(previousStore, 0);
 
     this.jobStore.setStaleGenerationHandler?.(undefined);
+    this.jobStore.setInterruptedGenerationRecorder?.(undefined);
     this.jobStore = services.jobStore;
     this.bindStaleGenerationHandler();
+    this.jobStore.setInterruptedGenerationRecorder?.(this.interruptedGenerationRecorder);
     this._approvals = this.createApprovalLifecycle(this.jobStore);
     this._steering = new SteeringLifecycle(this.jobStore);
     this.eventTransport = services.eventTransport;
@@ -1180,6 +1184,16 @@ class GenerationJobManagerClass {
     if (!admitted) {
       throw new GenerationAdmissionDeniedError();
     }
+  }
+
+  /**
+   * Installs the host's durable record of an ownerless generation. The job
+   * store runs it before deleting a stale running job, so a reply whose server
+   * stopped mid-run is saved as interrupted instead of left unfinished.
+   */
+  setInterruptedGenerationRecorder(recorder?: InterruptedGenerationRecorder): void {
+    this.interruptedGenerationRecorder = recorder;
+    this.jobStore.setInterruptedGenerationRecorder?.(recorder);
   }
 
   /** Installs a durable, generation-fenced terminal lifecycle adapter. */

@@ -2481,6 +2481,141 @@ describe('RedisJobStore Integration Tests', () => {
 
       await store.destroy();
     });
+
+    test('records a stale job as interrupted before deleting it', async () => {
+      if (!ioredisClient) {
+        return;
+      }
+
+      const { RedisJobStore } = await import('../implementations/RedisJobStore');
+      const store = new RedisJobStore(ioredisClient, { runningTtl: 1 });
+      await store.initialize();
+
+      const streamId = `interrupted-job-${Date.now()}`;
+      await ioredisClient.hmset(`stream:{${streamId}}:job`, {
+        streamId,
+        userId: 'user-1',
+        status: 'running',
+        createdAt: (Date.now() - 10000).toString(),
+        conversationId: streamId,
+        responseMessageId: 'reply-1',
+        syncSent: '0',
+      });
+      await ioredisClient.sadd(`stream:running`, streamId);
+
+      const existedWhenRecorded: boolean[] = [];
+      const recorder = jest.fn(async () => {
+        existedWhenRecorded.push(await store.hasJob(streamId));
+      });
+      store.setInterruptedGenerationRecorder(recorder);
+
+      expect(await store.cleanup()).toBeGreaterThanOrEqual(1);
+
+      expect(recorder).toHaveBeenCalledTimes(1);
+      expect(recorder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          streamId,
+          userId: 'user-1',
+          conversationId: streamId,
+          responseMessageId: 'reply-1',
+        }),
+        expect.any(Array),
+      );
+      expect(existedWhenRecorded).toEqual([true]);
+      expect(await store.hasJob(streamId)).toBe(false);
+
+      await store.destroy();
+    });
+
+    test('hands the recorder the content another instance streamed', async () => {
+      if (!ioredisClient) {
+        return;
+      }
+
+      const { RedisJobStore } = await import('../implementations/RedisJobStore');
+      const writer = new RedisJobStore(ioredisClient, { runningTtl: 1 });
+      const sweeper = new RedisJobStore(ioredisClient, { runningTtl: 1 });
+      await writer.initialize();
+      await sweeper.initialize();
+
+      const streamId = `interrupted-content-${Date.now()}`;
+      await writer.createJob(streamId, 'user-1', streamId);
+      const chunks = [
+        {
+          event: 'on_run_step',
+          data: {
+            id: 'step-1',
+            runId: 'run-1',
+            index: 0,
+            stepDetails: { type: 'message_creation' },
+          },
+        },
+        {
+          event: 'on_message_delta',
+          data: { id: 'step-1', delta: { content: { type: 'text', text: 'Hello, ' } } },
+        },
+        {
+          event: 'on_message_delta',
+          data: { id: 'step-1', delta: { content: { type: 'text', text: 'world!' } } },
+        },
+      ];
+      for (const chunk of chunks) {
+        await writer.appendChunk(streamId, chunk);
+      }
+      await ioredisClient.hset(
+        `stream:{${streamId}}:job`,
+        'lastActiveAt',
+        (Date.now() - 10000).toString(),
+      );
+
+      const recorder = jest.fn(async () => undefined);
+      sweeper.setInterruptedGenerationRecorder(recorder);
+
+      expect(await sweeper.cleanup()).toBeGreaterThanOrEqual(1);
+
+      expect(recorder).toHaveBeenCalledWith(expect.objectContaining({ streamId }), [
+        expect.objectContaining({ type: 'text', text: 'Hello, world!' }),
+      ]);
+      expect(await sweeper.hasJob(streamId)).toBe(false);
+
+      await writer.destroy();
+      await sweeper.destroy();
+    });
+
+    test('keeps a stale job whose interrupted record fails, and retries it', async () => {
+      if (!ioredisClient) {
+        return;
+      }
+
+      const { RedisJobStore } = await import('../implementations/RedisJobStore');
+      const store = new RedisJobStore(ioredisClient, { runningTtl: 1 });
+      await store.initialize();
+
+      const streamId = `interrupted-retry-${Date.now()}`;
+      await ioredisClient.hmset(`stream:{${streamId}}:job`, {
+        streamId,
+        userId: 'user-1',
+        status: 'running',
+        createdAt: (Date.now() - 10000).toString(),
+        syncSent: '0',
+      });
+      await ioredisClient.sadd(`stream:running`, streamId);
+
+      const recorder = jest
+        .fn<Promise<void>, []>()
+        .mockRejectedValueOnce(new Error('database unavailable'))
+        .mockResolvedValue(undefined);
+      store.setInterruptedGenerationRecorder(recorder);
+
+      await store.cleanup();
+      expect(await store.hasJob(streamId)).toBe(true);
+
+      await store.cleanup();
+      expect(await store.hasJob(streamId)).toBe(false);
+      expect(recorder).toHaveBeenCalledTimes(2);
+
+      await store.destroy();
+    });
   });
 
   describe('Active Jobs by User', () => {

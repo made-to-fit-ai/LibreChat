@@ -64,6 +64,7 @@ const {
   configureFileConfigRegexEngine,
   configureAgentEventRuntime,
   createAgentEventTerminalHandler,
+  createInterruptedGenerationRecorder,
   createScheduleWriteGate,
   startCodeEnvironmentLifecycleReconciler,
   waitForKeyvRedisClient,
@@ -149,6 +150,9 @@ const configureGenerationStreams = () => {
   });
   GenerationJobManager.setApprovalExpiredHandler(recordExpiredScheduleApproval);
   GenerationJobManager.setAdmissionGuard(agentEventMethods.isAgentTriggerPrincipalActive);
+  GenerationJobManager.setInterruptedGenerationRecorder(
+    createInterruptedGenerationRecorder(agentEventMethods),
+  );
   GenerationJobManager.setTerminalHostActionHandler(
     createAgentEventTerminalHandler(agentEventMethods, {
       resumeDetachedAction: resumeAgentEventDetachedAction,

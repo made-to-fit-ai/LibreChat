@@ -24,6 +24,7 @@ import type {
   ParkedSteerClaim,
   ScheduleCleanupScope,
   ScheduleProviderOwner,
+  InterruptedGenerationRecorder,
 } from '~/stream/interfaces/IJobStore';
 import type { EarlyBufferOverflowState } from '../../types/earlyBufferRecovery';
 import type { RecoveredSteerPayload } from '~/stream/SteerRecovery';
@@ -47,6 +48,7 @@ import {
 } from '~/stream/SteerRecovery';
 import { retainedScheduleReceipt } from '~/stream/internal/scheduleReceipts';
 import { createCheckpointNamespace } from '~/stream/checkpoints';
+import { readInterruptedContent } from '~/stream/interrupted';
 import { retainScheduleMCPFailure } from '../scheduleFailure';
 import { toPendingSteer } from '~/stream/SteeringLifecycle';
 
@@ -57,6 +59,9 @@ const STEER_RECEIPT_MAX_PER_STREAM: number = 100;
 const CREATE_REPLACEMENT_RECEIPT_MAX = 32;
 const CLIENT_REQUEST_ID_PATTERN = /^[A-Za-z0-9:_-]{1,128}$/;
 const TERMINAL_PERSISTENCE_RETENTION_MS = 5 * 60 * 1000;
+/** How long past the stale timeout a job is kept while recording its reply as
+ *  interrupted keeps failing. Mirrors the grace the Redis job key's expiry gives. */
+const INTERRUPTED_RECORD_GRACE_MS = 5 * 60 * 1000;
 /** Bounded window a terminal job owing a host lifecycle hook is retained for retry before
  *  it is reaped even if unacknowledged (a permanently-failing hook cannot leak forever).
  *  Mirrors the Redis store's 24h host-action TTL. */
@@ -159,6 +164,53 @@ export class InMemoryJobStore implements IJobStoreV2 {
 
   setStaleGenerationHandler(handler?: (streamId: string, createdAt: number) => void): void {
     this.staleGenerationHandler = handler;
+  }
+
+  private interruptedGenerationRecorder?: InterruptedGenerationRecorder;
+
+  setInterruptedGenerationRecorder(recorder?: InterruptedGenerationRecorder): void {
+    this.interruptedGenerationRecorder = recorder;
+  }
+
+  /**
+   * False keeps the job: the record failed, or the job moved on while it was
+   * written. A record that still fails once the grace period has passed stops
+   * holding the job, so an unreachable database cannot keep stale jobs in
+   * memory without bound.
+   */
+  private async recordInterrupted(
+    streamId: string,
+    job: SerializableJobData,
+    observedLastActive: number,
+    now: number,
+  ): Promise<boolean> {
+    if (this.interruptedGenerationRecorder == null) {
+      return true;
+    }
+    try {
+      await this.interruptedGenerationRecorder(job, await readInterruptedContent(this, job));
+    } catch (error) {
+      const expired = now - observedLastActive > this.staleJobTimeout + INTERRUPTED_RECORD_GRACE_MS;
+      logger.error(
+        `[InMemoryJobStore] Failed to record interrupted generation, ${
+          expired ? 'retiring the job unrecorded' : 'keeping the job for the next sweep'
+        }: ${streamId}`,
+        error,
+      );
+      if (!expired) {
+        return false;
+      }
+    }
+    const lastActive = Math.max(
+      this.lastActivity.get(streamId) ?? 0,
+      job.lastActiveAt ?? 0,
+      job.createdAt,
+    );
+    return (
+      this.jobs.get(streamId) === job &&
+      job.status === 'running' &&
+      lastActive === observedLastActive
+    );
   }
 
   /** Maps userId -> Set of streamIds (conversationIds) for active jobs */
@@ -1333,6 +1385,15 @@ export class InMemoryJobStore implements IJobStoreV2 {
             logger.error(
               `[InMemoryJobStore] Refusing stale job cleanup with invalid recovery state: ${streamId}`,
             );
+            continue;
+          }
+          // A retained schedule job keeps its own durable error outcome. Any
+          // other stale job is deleted below and is the last record of its
+          // generation, so its reply is recorded as interrupted first.
+          if (
+            job.preserveForScheduleReconcile !== true &&
+            !(await this.recordInterrupted(streamId, job, lastActive, now))
+          ) {
             continue;
           }
           this.parkQueuedSteers(streamId, job, now);

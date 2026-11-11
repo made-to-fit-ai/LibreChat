@@ -5408,6 +5408,10 @@ export enum ErrorTypes {
    */
   STREAM_EXPIRED = 'stream_expired',
   /**
+   * The server stopped running a reply before it finished, and it was not resumed
+   */
+  GENERATION_INTERRUPTED = 'generation_interrupted',
+  /**
    * Provider does not serve the requested model
    */
   MODEL_NOT_FOUND = 'model_not_found',
