@@ -1,6 +1,11 @@
 import { logger, tenantStorage } from '@librechat/data-schemas';
 import { ContentTypes, ErrorTypes } from 'librechat-data-provider';
-import type { InterruptedGenerationRecorder } from './interfaces/IJobStore';
+import type {
+  IJobStore,
+  SerializableJobData,
+  InterruptedGenerationRecorder,
+} from './interfaces/IJobStore';
+import { filterPersistableAbortContent } from './abortContent';
 
 /** Shown as-is by a client bundle that predates `ErrorTypes.GENERATION_INTERRUPTED`. */
 const INTERRUPTED_FALLBACK =
@@ -30,6 +35,7 @@ export interface InterruptedGenerationMethods {
     messageId: string;
     conversationId: string;
     part: Record<string, unknown>;
+    content?: readonly unknown[];
   }): Promise<boolean>;
   saveMessage(
     ctx: { userId: string; isTemporary?: boolean; expiredAt?: Date },
@@ -58,11 +64,37 @@ const interruptedPart = () => ({
 });
 
 /**
+ * The content a stale job's store still holds, filtered the way a disconnect
+ * snapshot is. A compaction's snapshot carries markers this cannot rebuild, so
+ * it keeps its saved row, and a failed read costs the newer content, not the
+ * record.
+ */
+export async function readInterruptedContent(
+  store: Pick<IJobStore, 'getContentParts'>,
+  job: Pick<SerializableJobData, 'streamId' | 'createdAt' | 'compact'>,
+): Promise<unknown[]> {
+  if (job.compact === true) {
+    return [];
+  }
+  try {
+    const streamed = await store.getContentParts(job.streamId, job.createdAt);
+    return filterPersistableAbortContent(streamed?.content);
+  } catch (error) {
+    logger.warn(
+      `[InterruptedGeneration] Could not read streamed content for ${job.streamId}`,
+      error,
+    );
+    return [];
+  }
+}
+
+/**
  * Builds the recorder that gives an ownerless generation a durable outcome.
  *
  * A partial reply saved while the run was live is closed with an error part
- * that says it was interrupted; a turn with no saved reply gets one holding
- * only that part. A reply that already settled is left alone. Nothing is
+ * that says it was interrupted; a turn with no saved reply gets one ending in
+ * that part. Content the job streamed after its last saved snapshot is kept in
+ * both cases. A reply that already settled is left alone. Nothing is
  * resumed or rerun: the run may have called tools before it stopped, so only a
  * person can decide to try again.
  *
@@ -72,7 +104,7 @@ const interruptedPart = () => ({
 export function createInterruptedGenerationRecorder(
   methods: InterruptedGenerationMethods,
 ): InterruptedGenerationRecorder {
-  const record = async (job: InterruptedJob): Promise<void> => {
+  const record = async (job: InterruptedJob, streamed: readonly unknown[]): Promise<void> => {
     const userMessageId = job.userMessage?.messageId;
     const conversationId = job.conversationId ?? job.userMessage?.conversationId;
     if (!userMessageId || !conversationId) {
@@ -85,6 +117,7 @@ export function createInterruptedGenerationRecorder(
       messageId,
       conversationId,
       part: interruptedPart(),
+      ...(streamed.length > 0 && { content: streamed }),
     });
     // A reply that is saved but was not closed has already settled, or is not this turn's.
     if (closed || (await methods.getMessage({ user: job.userId, messageId })) != null) {
@@ -110,7 +143,7 @@ export function createInterruptedGenerationRecorder(
         ...(userMessage.endpoint != null && { endpoint: userMessage.endpoint }),
         ...(userMessage.model != null && { model: userMessage.model }),
         text: '',
-        content: [interruptedPart()],
+        content: [...streamed, interruptedPart()],
         unfinished: false,
         error: false,
         isCreatedByUser: false,
@@ -120,8 +153,10 @@ export function createInterruptedGenerationRecorder(
     );
   };
 
-  return (job) =>
+  return (job, streamed = []) =>
     job.tenantId
-      ? tenantStorage.run({ tenantId: job.tenantId, userId: job.userId }, () => record(job))
-      : record(job);
+      ? tenantStorage.run({ tenantId: job.tenantId, userId: job.userId }, () =>
+          record(job, streamed),
+        )
+      : record(job, streamed);
 }

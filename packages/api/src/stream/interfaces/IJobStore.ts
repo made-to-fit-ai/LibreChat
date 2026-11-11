@@ -963,12 +963,15 @@ export interface ScheduleCleanupScope {
 /**
  * Records that a generation ended without an owner. A job store awaits it
  * before retiring the last record of that generation; a throw keeps the job.
+ * `streamed` is the persistable content the store still holds for the job,
+ * which can be ahead of the reply's last saved snapshot; empty when it has none.
  */
 export type InterruptedGenerationRecorder = (
   job: Pick<
     SerializableJobData,
     'streamId' | 'userId' | 'tenantId' | 'conversationId' | 'responseMessageId' | 'userMessage'
   >,
+  streamed?: readonly unknown[],
 ) => Promise<void>;
 
 export interface IJobStore {

@@ -65,6 +65,7 @@ import { instrumentIORedisClient, RedisUseCases } from '~/cache/redisTelemetry';
 import { RecoveredSteerPayloadMismatchError } from '~/stream/SteerRecovery';
 import { SCHEDULE_MCP_FAILURE_PATCH_LUA } from '../scheduleFailure';
 import { createCheckpointNamespace } from '~/stream/checkpoints';
+import { readInterruptedContent } from '~/stream/interrupted';
 import { createToolTimingTracker } from '~/agents/toolTiming';
 import { evalScript } from '~/cache/redisScript';
 
@@ -3750,8 +3751,11 @@ export class RedisJobStore implements IJobStoreV2 {
             // A retained schedule job keeps its own durable error outcome. Every
             // other stale job is deleted below, so its reply is recorded as
             // interrupted first; a failed write leaves the job for the next sweep.
-            if (job.preserveForScheduleReconcile !== true) {
-              await this.interruptedGenerationRecorder?.(job);
+            if (job.preserveForScheduleReconcile !== true && this.interruptedGenerationRecorder) {
+              await this.interruptedGenerationRecorder(
+                job,
+                await readInterruptedContent(this, job),
+              );
             }
             // Re-check liveness + epoch, park queued steers, and delete same-slot
             // state in one script. A replacement cannot land in the old

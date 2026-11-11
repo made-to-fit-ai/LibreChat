@@ -364,6 +364,58 @@ describe('GenerationJobManager - generation abort on reaping', () => {
     }
   });
 
+  it('fences a hung run out of its saved reply once it is recorded as interrupted', async () => {
+    const { GenerationJobManagerClass } = await import('../GenerationJobManager');
+    const { InMemoryJobStore } = await import('../implementations/InMemoryJobStore');
+    const { InMemoryEventTransport } = await import('../implementations/InMemoryEventTransport');
+
+    jest.useFakeTimers();
+    try {
+      const manager = new GenerationJobManagerClass();
+      manager.configure({
+        jobStore: new InMemoryJobStore({ ttlAfterComplete: 0, staleJobTimeout: 1000 }),
+        eventTransport: new InMemoryEventTransport(),
+        isRedis: false,
+      });
+      const recorded: string[] = [];
+      manager.setInterruptedGenerationRecorder(async (job) => {
+        recorded.push(job.streamId);
+      });
+      manager.initialize();
+
+      const job = await manager.createJob('conv-hung', 'user-1', 'conv-hung');
+      const snapshots: unknown[] = [];
+      job.emitter.on('allSubscribersLeft', (content: unknown) => snapshots.push(content));
+
+      // The run hangs in this process: no chunks, past the stale timeout and a cleanup tick.
+      await jest.advanceTimersByTimeAsync(61000);
+
+      expect(recorded).toEqual(['conv-hung']);
+      expect(job.abortController.signal.aborted).toBe(true);
+
+      /** The run unwinds on that abort. Both of its writes to the saved reply are
+       *  gated on the job: the terminal save needs this claim, and the disconnect
+       *  snapshot needs resume state. Neither is granted any more. */
+      for (const status of ['aborted', 'complete'] as const) {
+        expect(
+          await manager.claimTerminalJob('conv-hung', status, undefined, job.createdAt, {
+            persistencePending: true,
+          }),
+        ).toBeNull();
+      }
+      expect(await manager.getResumeState('conv-hung', job.createdAt)).toBeNull();
+      expect(snapshots).toEqual([]);
+
+      // Later sweeps find nothing left to record a second time.
+      await jest.advanceTimersByTimeAsync(180000);
+      expect(recorded).toEqual(['conv-hung']);
+
+      await manager.destroy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it('does not reap a replacement runtime from a stale hasJob result', async () => {
     const { GenerationJobManagerClass } = await import('../GenerationJobManager');
     const { InMemoryJobStore } = await import('../implementations/InMemoryJobStore');

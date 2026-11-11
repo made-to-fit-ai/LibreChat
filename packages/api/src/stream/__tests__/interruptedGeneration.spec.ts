@@ -136,6 +136,67 @@ describe('createInterruptedGenerationRecorder', () => {
     expect((await getReply())?.content).toHaveLength(2);
   });
 
+  it('keeps what streamed after the last saved snapshot', async () => {
+    await saveUserMessage();
+    await saveReply({ unfinished: true });
+    const streamed = [
+      { type: ContentTypes.TEXT, text: 'Here is the first half and most of the second' },
+      { type: ContentTypes.TEXT, text: 'A later part' },
+    ];
+
+    await record(job, streamed);
+
+    const reply = await getReply();
+    expect(reply?.unfinished).toBe(false);
+    expect(reply?.content).toEqual([
+      ...streamed,
+      { type: ContentTypes.ERROR, error: INTERRUPTED_GENERATION_ERROR },
+    ]);
+  });
+
+  it('keeps the saved snapshot when the stream holds fewer parts than it', async () => {
+    await saveUserMessage();
+    await saveReply({ unfinished: true });
+    await methods.updateMessage(USER, {
+      messageId: REPLY,
+      content: [
+        { type: ContentTypes.TEXT, text: 'Here is the first half' },
+        { type: ContentTypes.TEXT, text: 'A second saved part' },
+      ],
+    });
+
+    await record(job, [{ type: ContentTypes.TEXT, text: 'Here' }]);
+
+    expect((await getReply())?.content).toEqual([
+      { type: ContentTypes.TEXT, text: 'Here is the first half' },
+      { type: ContentTypes.TEXT, text: 'A second saved part' },
+      { type: ContentTypes.ERROR, error: INTERRUPTED_GENERATION_ERROR },
+    ]);
+  });
+
+  it('saves what streamed when the turn has no saved reply', async () => {
+    await saveUserMessage();
+    const streamed = [{ type: ContentTypes.TEXT, text: 'Streamed but never snapshotted' }];
+
+    await record(job, streamed);
+
+    expect((await getReply())?.content).toEqual([
+      ...streamed,
+      { type: ContentTypes.ERROR, error: INTERRUPTED_GENERATION_ERROR },
+    ]);
+  });
+
+  it('leaves a settled reply untouched even when the stream holds content', async () => {
+    await saveUserMessage();
+    await saveReply({ unfinished: false });
+
+    await record(job, [{ type: ContentTypes.TEXT, text: 'stale stream' }]);
+
+    expect((await getReply())?.content).toEqual([
+      { type: ContentTypes.TEXT, text: 'Here is the first half' },
+    ]);
+  });
+
   it('writes nothing when the turn was never saved', async () => {
     await record(job);
 
@@ -182,6 +243,7 @@ describe('InMemoryJobStore interrupted generation record', () => {
     expect(recorder).toHaveBeenCalledTimes(1);
     expect(recorder).toHaveBeenCalledWith(
       expect.objectContaining({ streamId: 's1', userId: USER }),
+      [],
     );
     expect(seen).toEqual([true]);
     expect(await store.hasJob('s1')).toBe(false);
@@ -217,6 +279,50 @@ describe('InMemoryJobStore interrupted generation record', () => {
 
     expect(await store.cleanup()).toBe(0);
     expect(await store.hasJob('s1')).toBe(true);
+    await store.destroy();
+  });
+
+  it('retires a stale job whose record keeps failing once the grace period has passed', async () => {
+    const store = new InMemoryJobStore({ ttlAfterComplete: 0, staleJobTimeout: 1000 });
+    await store.initialize();
+    await store.createJob('s1', USER, 's1');
+    const recorder = jest.fn<Promise<void>, []>().mockRejectedValue(new Error('database down'));
+    store.setInterruptedGenerationRecorder(recorder);
+    const base = Date.now();
+    const nowSpy = jest.spyOn(Date, 'now');
+    try {
+      // Stale, and still inside the five-minute grace: kept for another try.
+      nowSpy.mockReturnValue(base + 1000 + 4 * 60 * 1000);
+      expect(await store.cleanup()).toBe(0);
+      expect(await store.hasJob('s1')).toBe(true);
+
+      // Past the grace: retired even though the record still fails.
+      nowSpy.mockReturnValue(base + 1000 + 5 * 60 * 1000 + 1000);
+      expect(await store.cleanup()).toBe(1);
+      expect(await store.hasJob('s1')).toBe(false);
+      expect(recorder).toHaveBeenCalledTimes(2);
+    } finally {
+      nowSpy.mockRestore();
+    }
+    await store.destroy();
+  });
+
+  it('hands the recorder the content the job had streamed', async () => {
+    const store = new InMemoryJobStore({ ttlAfterComplete: 0, staleJobTimeout: 1000 });
+    await store.initialize();
+    await makeStale(store, 's1');
+    store.setContentParts('s1', [
+      { type: ContentTypes.TEXT, text: 'streamed text' },
+      { type: ContentTypes.TEXT, text: '   ' },
+    ]);
+    const recorder = jest.fn(async () => undefined);
+    store.setInterruptedGenerationRecorder(recorder);
+
+    expect(await store.cleanup()).toBe(1);
+
+    expect(recorder).toHaveBeenCalledWith(expect.objectContaining({ streamId: 's1' }), [
+      { type: ContentTypes.TEXT, text: 'streamed text' },
+    ]);
     await store.destroy();
   });
 

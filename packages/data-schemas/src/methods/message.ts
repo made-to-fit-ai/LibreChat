@@ -945,14 +945,17 @@ export interface MessageMethods {
   getMessage(params: { user: string; messageId: string }): Promise<IMessage | null>;
   /**
    * Settles a reply still saved as unfinished by appending one content part, as a
-   * single conditional update. Resolves false when the user has no unfinished
-   * reply with that id in that conversation; throws when the write fails.
+   * single conditional update. With `content`, the saved content is replaced by
+   * it first, unless the row already holds more parts than `content` does.
+   * Resolves false when the user has no unfinished reply with that id in that
+   * conversation; throws when the write fails.
    */
   closeUnfinishedMessage(params: {
     user: string;
     messageId: string;
     conversationId: string;
     part: Record<string, unknown>;
+    content?: readonly unknown[];
   }): Promise<boolean>;
   getMessagesByCursor(
     filter: FilterQuery<IMessage>,
@@ -4178,17 +4181,37 @@ export function createMessageMethods(
     messageId,
     conversationId,
     part,
+    content,
   }: {
     user: string;
     messageId: string;
     conversationId: string;
     part: Record<string, unknown>;
+    content?: readonly unknown[];
   }): Promise<boolean> {
+    const unfinished = { user, messageId, conversationId, unfinished: true };
+    if (content != null && content.length > 0) {
+      const replaced = await writeMessage(
+        {
+          ...unfinished,
+          $expr: { $lte: [{ $size: { $ifNull: ['$content', []] } }, content.length] },
+        },
+        {
+          unfinished: false,
+          content: [...content, part],
+          userSubmittedPaths: getSteerUserSubmittedPaths(content),
+        },
+        { upsert: false },
+      );
+      if (replaced != null) {
+        return true;
+      }
+    }
     const Message = mongoose.models.Message as Model<IMessage>;
-    const result = await Message.updateOne(
-      { user, messageId, conversationId, unfinished: true },
-      { $set: { unfinished: false }, $push: { content: part } },
-    );
+    const result = await Message.updateOne(unfinished, {
+      $set: { unfinished: false },
+      $push: { content: part },
+    });
     return result.modifiedCount > 0;
   }
 

@@ -2519,11 +2519,67 @@ describe('RedisJobStore Integration Tests', () => {
           conversationId: streamId,
           responseMessageId: 'reply-1',
         }),
+        expect.any(Array),
       );
       expect(existedWhenRecorded).toEqual([true]);
       expect(await store.hasJob(streamId)).toBe(false);
 
       await store.destroy();
+    });
+
+    test('hands the recorder the content another instance streamed', async () => {
+      if (!ioredisClient) {
+        return;
+      }
+
+      const { RedisJobStore } = await import('../implementations/RedisJobStore');
+      const writer = new RedisJobStore(ioredisClient, { runningTtl: 1 });
+      const sweeper = new RedisJobStore(ioredisClient, { runningTtl: 1 });
+      await writer.initialize();
+      await sweeper.initialize();
+
+      const streamId = `interrupted-content-${Date.now()}`;
+      await writer.createJob(streamId, 'user-1', streamId);
+      const chunks = [
+        {
+          event: 'on_run_step',
+          data: {
+            id: 'step-1',
+            runId: 'run-1',
+            index: 0,
+            stepDetails: { type: 'message_creation' },
+          },
+        },
+        {
+          event: 'on_message_delta',
+          data: { id: 'step-1', delta: { content: { type: 'text', text: 'Hello, ' } } },
+        },
+        {
+          event: 'on_message_delta',
+          data: { id: 'step-1', delta: { content: { type: 'text', text: 'world!' } } },
+        },
+      ];
+      for (const chunk of chunks) {
+        await writer.appendChunk(streamId, chunk);
+      }
+      await ioredisClient.hset(
+        `stream:{${streamId}}:job`,
+        'lastActiveAt',
+        (Date.now() - 10000).toString(),
+      );
+
+      const recorder = jest.fn(async () => undefined);
+      sweeper.setInterruptedGenerationRecorder(recorder);
+
+      expect(await sweeper.cleanup()).toBeGreaterThanOrEqual(1);
+
+      expect(recorder).toHaveBeenCalledWith(expect.objectContaining({ streamId }), [
+        expect.objectContaining({ type: 'text', text: 'Hello, world!' }),
+      ]);
+      expect(await sweeper.hasJob(streamId)).toBe(false);
+
+      await writer.destroy();
+      await sweeper.destroy();
     });
 
     test('keeps a stale job whose interrupted record fails, and retries it', async () => {
