@@ -688,6 +688,7 @@
   "com_error_files_validation": "An error occurred while validating the file.",
   "com_error_final_context_overflow": "This request needs {{0}} tokens, but only {{1}} fit in the current context window.",
   "com_error_final_context_overflow_unknown": "This request exceeds the current context window and could not be reduced to fit.",
+  "com_error_generation_interrupted": "This reply was interrupted before it finished and was not resumed. Steps it had already started may have taken effect, so check before you retry.",
   "com_error_google_error": "Google rejected this request.",
   "com_error_google_tool_conflict": "Built-in Google tools cannot be used together with external tools. Disable one of the two and try again.",
   "com_error_google_video_unprocessable": "The linked video could not be processed. It is most likely too long for this model, but it may also be unavailable in this region or restricted. Try a shorter video, or describe the relevant parts in your message instead.",

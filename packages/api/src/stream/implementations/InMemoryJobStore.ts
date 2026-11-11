@@ -24,6 +24,7 @@ import type {
   ParkedSteerClaim,
   ScheduleCleanupScope,
   ScheduleProviderOwner,
+  InterruptedGenerationRecorder,
 } from '~/stream/interfaces/IJobStore';
 import type { EarlyBufferOverflowState } from '../../types/earlyBufferRecovery';
 import type { RecoveredSteerPayload } from '~/stream/SteerRecovery';
@@ -159,6 +160,42 @@ export class InMemoryJobStore implements IJobStoreV2 {
 
   setStaleGenerationHandler(handler?: (streamId: string, createdAt: number) => void): void {
     this.staleGenerationHandler = handler;
+  }
+
+  private interruptedGenerationRecorder?: InterruptedGenerationRecorder;
+
+  setInterruptedGenerationRecorder(recorder?: InterruptedGenerationRecorder): void {
+    this.interruptedGenerationRecorder = recorder;
+  }
+
+  /** False keeps the job: the record failed, or the job moved on while it was written. */
+  private async recordInterrupted(
+    streamId: string,
+    job: SerializableJobData,
+    observedLastActive: number,
+  ): Promise<boolean> {
+    if (this.interruptedGenerationRecorder == null) {
+      return true;
+    }
+    try {
+      await this.interruptedGenerationRecorder(job);
+    } catch (error) {
+      logger.error(
+        `[InMemoryJobStore] Failed to record interrupted generation, keeping job: ${streamId}`,
+        error,
+      );
+      return false;
+    }
+    const lastActive = Math.max(
+      this.lastActivity.get(streamId) ?? 0,
+      job.lastActiveAt ?? 0,
+      job.createdAt,
+    );
+    return (
+      this.jobs.get(streamId) === job &&
+      job.status === 'running' &&
+      lastActive === observedLastActive
+    );
   }
 
   /** Maps userId -> Set of streamIds (conversationIds) for active jobs */
@@ -1333,6 +1370,15 @@ export class InMemoryJobStore implements IJobStoreV2 {
             logger.error(
               `[InMemoryJobStore] Refusing stale job cleanup with invalid recovery state: ${streamId}`,
             );
+            continue;
+          }
+          // A retained schedule job keeps its own durable error outcome. Any
+          // other stale job is deleted below and is the last record of its
+          // generation, so its reply is recorded as interrupted first.
+          if (
+            job.preserveForScheduleReconcile !== true &&
+            !(await this.recordInterrupted(streamId, job, lastActive))
+          ) {
             continue;
           }
           this.parkQueuedSteers(streamId, job, now);

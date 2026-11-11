@@ -960,6 +960,17 @@ export interface ScheduleCleanupScope {
   userId?: string;
 }
 
+/**
+ * Records that a generation ended without an owner. A job store awaits it
+ * before retiring the last record of that generation; a throw keeps the job.
+ */
+export type InterruptedGenerationRecorder = (
+  job: Pick<
+    SerializableJobData,
+    'streamId' | 'userId' | 'tenantId' | 'conversationId' | 'responseMessageId' | 'userMessage'
+  >,
+) => Promise<void>;
+
 export interface IJobStore {
   readonly detachedAgentEventActionStoreMode?: DetachedAgentEventActionStoreMode;
   /** Receipt evidence survives loss of the generation worker; absent is volatile. */
@@ -968,6 +979,10 @@ export interface IJobStore {
   /** Synchronous exact-epoch notification after a retained stale transition.
    * Cancellation is not drain acknowledgement; provider owners still record drain. */
   setStaleGenerationHandler?(handler?: (streamId: string, createdAt: number) => void): void;
+
+  /** Installs the host's durable record of an ownerless generation. The store awaits it
+   * before it deletes a stale running job, and keeps the job when it throws. */
+  setInterruptedGenerationRecorder?(recorder?: InterruptedGenerationRecorder): void;
 
   initialize(): Promise<void>;
 

@@ -943,6 +943,17 @@ export interface MessageMethods {
     limitPerThread: number;
   }): Promise<ParentSubagentTaskRecord[]>;
   getMessage(params: { user: string; messageId: string }): Promise<IMessage | null>;
+  /**
+   * Settles a reply still saved as unfinished by appending one content part, as a
+   * single conditional update. Resolves false when the user has no unfinished
+   * reply with that id in that conversation; throws when the write fails.
+   */
+  closeUnfinishedMessage(params: {
+    user: string;
+    messageId: string;
+    conversationId: string;
+    part: Record<string, unknown>;
+  }): Promise<boolean>;
   getMessagesByCursor(
     filter: FilterQuery<IMessage>,
     options?: {
@@ -4162,6 +4173,25 @@ export function createMessageMethods(
     }
   }
 
+  async function closeUnfinishedMessage({
+    user,
+    messageId,
+    conversationId,
+    part,
+  }: {
+    user: string;
+    messageId: string;
+    conversationId: string;
+    part: Record<string, unknown>;
+  }): Promise<boolean> {
+    const Message = mongoose.models.Message as Model<IMessage>;
+    const result = await Message.updateOne(
+      { user, messageId, conversationId, unfinished: true },
+      { $set: { unfinished: false }, $push: { content: part } },
+    );
+    return result.modifiedCount > 0;
+  }
+
   /**
    * Deletes messages from the database.
    */
@@ -4377,6 +4407,7 @@ export function createMessageMethods(
     getMessagesForSubagentThreadView,
     listSubagentTasksForThreads,
     getMessage,
+    closeUnfinishedMessage,
     getMessagesByCursor,
     searchMessages,
     deleteMessages,

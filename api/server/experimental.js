@@ -53,6 +53,7 @@ const {
   configureAgentEventRuntime,
   GenerationJobManager,
   createAgentEventTerminalHandler,
+  createInterruptedGenerationRecorder,
   startCodeEnvironmentLifecycleReconciler,
   waitForKeyvRedisClient,
   createCodeApiUploadRegistry,
@@ -371,6 +372,9 @@ if (cluster.isMaster) {
   // its durable run when the generic approval runtime expires it.
   GenerationJobManager.setApprovalExpiredHandler(recordExpiredScheduleApproval);
   GenerationJobManager.setAdmissionGuard(agentEventMethods.isAgentTriggerPrincipalActive);
+  GenerationJobManager.setInterruptedGenerationRecorder(
+    createInterruptedGenerationRecorder(agentEventMethods),
+  );
   GenerationJobManager.setTerminalHostActionHandler(
     createAgentEventTerminalHandler(agentEventMethods, {
       resumeDetachedAction: resumeAgentEventDetachedAction,

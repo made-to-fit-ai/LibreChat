@@ -2,6 +2,7 @@ import { ErrorTypes, ViolationTypes } from 'librechat-data-provider';
 import type { ComponentType } from 'react';
 import type { ErrorRendererProps } from './parts';
 import type { TranslationKeys } from '~/hooks';
+import InterruptedError from './InterruptedError';
 import { ProviderErrorCodes } from './parts';
 import ProviderError from './ProviderError';
 import UserKeyError from './UserKeyError';
@@ -58,6 +59,7 @@ export const errorRenderers: Record<string, ComponentType<ErrorRendererProps>> =
   [ProviderErrorCodes.INVALID_API_KEY]: UserKeyError,
   [ProviderErrorCodes.INSUFFICIENT_QUOTA]: UserKeyError,
   [ErrorTypes.INVALID_AGENT_PROVIDER]: AgentError,
+  [ErrorTypes.GENERATION_INTERRUPTED]: InterruptedError,
   [ErrorTypes.MISSING_MODEL]: ModelError,
   [ErrorTypes.ENDPOINT_MODELS_NOT_LOADED]: ModelError,
   [ErrorTypes.UPSTREAM_MODEL_ERROR]: ModelError,
